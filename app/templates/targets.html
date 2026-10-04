@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Kelola Target KPI &bull; KPI Sosmed{% endblock %}
+{% block page_title %}Pengaturan Target KPI{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- Add Target Form Card -->
+    <article class="dashboard-card" style="margin:0;display:flex;flex-direction:column;gap:1.25rem;">
+        <div>
+            <h3 style="font-size:15px;font-weight:700;color:#ffffff;margin:0;">Tambah Sasaran KPI Baru</h3>
+            <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">Tentukan batas metrik kinerja untuk memantau progres performa bulanan atau mingguan.</p>
+        </div>
+        
+        <form hx-post="/settings/targets"
+              hx-target="#kpi-targets-container"
+              hx-swap="innerHTML"
+              style="margin:0;display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:0.75rem;align-items:end;">
+            
+            <div>
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;margin-bottom:0.25rem;display:block;">Platform</label>
+                <select name="platform_id" style="font-size:12px;margin:0;">
+                    <option value="all">Semua Platform</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;margin-bottom:0.25rem;display:block;">Metrik</label>
+                <select name="metric" style="font-size:12px;margin:0;">
+                    <option value="views">Total Views</option>
+                    <option value="followers">Followers / Subs</option>
+                    <option value="reach">Total Reach</option>
+                    <option value="engagement_count">Total Interaksi</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;margin-bottom:0.25rem;display:block;">Periode</label>
+                <select name="period" style="font-size:12px;margin:0;">
+                    <option value="monthly">Bulanan</option>
+                    <option value="weekly">Mingguan</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;margin-bottom:0.25rem;display:block;">Nilai Target</label>
+                <input type="number" name="target_value" step="any" required placeholder="100000" style="font-size:12px;margin:0;">
+            </div>
+
+            <div>
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;margin-bottom:0.25rem;display:block;">Mulai</label>
+                <input type="date" name="start_date" required style="font-size:12px;margin:0;">
+            </div>
+
+            <div>
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;margin-bottom:0.25rem;display:block;">Selesai</label>
+                <input type="date" name="end_date" required style="font-size:12px;margin:0;">
+            </div>
+
+            <div style="grid-column: 1 / -1; display:flex; justify-content:flex-end;">
+                <button type="submit" class="btn-ui btn-ui-primary">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span>Simpan Target</span>
+                </button>
+            </div>
+        </form>
+    </article>
+
+    <!-- Active Targets List -->
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;">Daftar Sasaran Aktif</h3>
+        <div id="kpi-targets-container">
+            {% include "partials/kpi_targets.html" %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

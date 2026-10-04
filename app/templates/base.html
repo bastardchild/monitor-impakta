@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IMPAKTA RADAR &bull; Media & Portal Intelligence{% endblock %}</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Pico CSS v2 (Semantic Dark Foundation) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- Custom CSS (Theme Variables, Dashboard Grids, Badges & Icons) -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    <!-- HTMX (CDN) -->
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    
+    <!-- Alpine.js (CDN) -->
+    <script defer src="https://unpkg.com/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+
+    <!-- App JS -->
+    <script src="/static/js/app.js"></script>
+</head>
+<body x-data="{ 
+    mobileSidebarOpen: false, 
+    desktopCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
+    toggleSidebar() {
+        if (window.innerWidth <= 768) {
+            this.mobileSidebarOpen = !this.mobileSidebarOpen;
+        } else {
+            this.desktopCollapsed = !this.desktopCollapsed;
+            localStorage.setItem('sidebar_collapsed', this.desktopCollapsed);
+        }
+    }
+}">
+
+    <!-- Mobile Backdrop -->
+    <div x-show="mobileSidebarOpen" 
+         @click="mobileSidebarOpen = false" 
+         class="mobile-backdrop" 
+         x-transition.opacity 
+         x-cloak></div>
+
+    <div class="dashboard-container" :class="desktopCollapsed ? 'sidebar-collapsed' : ''">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar" :class="mobileSidebarOpen ? 'open' : ''">
+            
+            <!-- Brand -->
+            <div class="sidebar-brand">
+                <a href="/">
+                    <div class="sidebar-logo-icon">
+                        <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                    </div>
+                    <div>
+                        <strong style="font-size:14px;letter-spacing:-0.02em;color:#ffffff;display:block;">IMPAKTA RADAR</strong>
+                        <span class="font-mono" style="font-size:10px;color:#64748b;display:block;letter-spacing:0.06em;text-transform:uppercase;">Media Intelligence</span>
+                    </div>
+                </a>
+                <button type="button" @click="mobileSidebarOpen = false" class="btn-filter mobile-close-btn" aria-label="Tutup Menu">
+                    <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="sidebar-nav" role="navigation">
+                <a href="/" class="nav-link {% if current_page == 'overview' %}active{% endif %}">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+                    <span>Ringkasan Metrik</span>
+                </a>
+
+                <p class="nav-section-title">Portal Berita & Web</p>
+
+                <!-- unmer.ac.id -->
+                <a href="/unmer" class="nav-link {% if current_page == 'unmer' %}active{% endif %}">
+                    <svg style="color:#38bdf8;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
+                    <span>unmer.ac.id</span>
+                </a>
+
+                <p class="nav-section-title">Media Sosial Resmi</p>
+
+                <!-- YouTube -->
+                <a href="/platform/youtube" class="nav-link {% if current_page == 'youtube' %}active{% endif %}">
+                    <svg style="color:#ef4444;" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    <span>YouTube</span>
+                </a>
+
+                <!-- Instagram -->
+                <a href="/platform/instagram" class="nav-link {% if current_page == 'instagram' %}active{% endif %}">
+                    <svg style="color:#f472b6;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                    <span>Instagram</span>
+                </a>
+
+                <!-- TikTok -->
+                <a href="/platform/tiktok" class="nav-link {% if current_page == 'tiktok' %}active{% endif %}">
+                    <svg style="color:#22d3ee;" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.98v8.63a6.83 6.83 0 0 1-6.84 6.84 6.83 6.83 0 0 1-6.83-6.84 6.83 6.83 0 0 1 6.83-6.83c.36 0 .72.03 1.07.1v4.11a2.82 2.82 0 0 0-1.07-.2 2.82 2.82 0 0 0-2.82 2.82 2.82 2.82 0 0 0 2.82 2.82 2.82 2.82 0 0 0 2.82-2.82V.02z"/></svg>
+                    <span>TikTok</span>
+                </a>
+
+                <p class="nav-section-title">Konfigurasi</p>
+
+                <!-- Koneksi Akun -->
+                <a href="/settings/connections" class="nav-link {% if current_page == 'connections' %}active{% endif %}">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+                    <span>Koneksi Akun</span>
+                </a>
+
+                <!-- Log Sistem -->
+                <a href="/settings/logs" class="nav-link {% if current_page == 'logs' %}active{% endif %}">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 3-3 3m4.5 0h4.5m-11.25 6h15a2.25 2.25 0 002.25-2.25v-13.5A2.25 2.25 0 0018 3.75H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/></svg>
+                    <span>Log Sistem</span>
+                </a>
+            </div>
+
+            <!-- Admin Profile & Logout -->
+            <div class="sidebar-user">
+                <div style="display:flex;align-items:center;gap:0.65rem;">
+                    <div style="width:28px;height:28px;border-radius:6px;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#cbd5e1;font-family:var(--font-mono);">
+                        AD
+                    </div>
+                    <div style="font-size:11px;line-height:1.2;">
+                        <span style="font-weight:600;color:#f1f5f9;display:block;">Administrator</span>
+                        <span style="color:#64748b;font-family:var(--font-mono);font-size:10px;display:block;">Personal Node</span>
+                    </div>
+                </div>
+                <form action="/logout" method="post" style="margin:0;">
+                    <button type="submit" title="Keluar dari sesi" class="btn-filter" style="padding:0.35rem;color:#94a3b8;">
+                        <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="dashboard-main">
+            <!-- Topbar Header -->
+            <header class="dashboard-header">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <button type="button" @click="toggleSidebar()" class="btn-ui btn-ui-secondary sidebar-toggle-btn" title="Toggle Sidebar" aria-label="Toggle Sidebar">
+                        <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                    </button>
+                    <h1 style="font-size:15px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.02em;">
+                        {% block page_title %}Dashboard{% endblock %}
+                    </h1>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    {% block filter_controls %}{% endblock %}
+
+                    <!-- Live Status Indicator -->
+                    <div style="display:flex;align-items:center;gap:0.4rem;padding:0.25rem 0.65rem;border-radius:9999px;background:#0d121f;border:1px solid #1e293b;font-size:10px;font-family:var(--font-mono);color:#94a3b8;">
+                        <span class="status-dot online"></span>
+                        <span>ONLINE</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Flash Messages -->
+            {% if flash_success %}
+            <div style="margin:1rem 1.5rem 0;padding:0.75rem 1rem;border-radius:10px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);color:#34d399;font-size:12px;display:flex;align-items:center;justify-content:space-between;" x-data="{ show: true }" x-show="show">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <svg style="width:16px;height:16px;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>{{ flash_success }}</span>
+                </div>
+                <button type="button" @click="show = false" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            {% endif %}
+
+            {% if flash_error %}
+            <div style="margin:1rem 1.5rem 0;padding:0.75rem 1rem;border-radius:10px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.25);color:#fb7185;font-size:12px;display:flex;align-items:center;justify-content:space-between;" x-data="{ show: true }" x-show="show">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <svg style="width:16px;height:16px;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                    <span>{{ flash_error }}</span>
+                </div>
+                <button type="button" @click="show = false" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- Main Content Container -->
+            <div class="dashboard-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

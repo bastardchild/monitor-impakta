@@ -1,0 +1,139 @@
+<article class="dashboard-card" style="margin:0;display:flex;flex-direction:column;gap:1.25rem;">
+    
+    <!-- Header: Title & Net Sentiment Score -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;padding-bottom:1rem;border-bottom:1px solid #1e293b;">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#60a5fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
+                </svg>
+            </div>
+            <div>
+                <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Analisis Tone & Sentimen Audiens</h3>
+                <p style="font-size:12px;color:#94a3b8;margin:0.2rem 0 0;">Evaluasi persepsi publik, nada respon, dan kualitas interaksi komentar</p>
+            </div>
+        </div>
+
+        <!-- Net Sentiment Badge -->
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="font-size:12px;color:#94a3b8;font-weight:500;">Net Sentiment:</span>
+            <div class="delta-pill font-tabular {{ sentiment.sentiment_badge_class }}" style="font-size:11px;padding:0.25rem 0.65rem;">
+                <span class="status-dot online"></span>
+                <span>{{ sentiment.net_sentiment_score }}</span>
+                <span style="opacity:0.8;text-transform:uppercase;font-size:10px;">&bull; {{ sentiment.sentiment_label }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3-Column Layout: Sentiment Distribution, Tone Breakdown, Sample Feedback -->
+    <div class="grid-3">
+
+        <!-- Column 1: Sentiment Share -->
+        <div style="background:rgba(15,23,42,0.6);border:1px solid #1e293b;border-radius:12px;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;gap:1rem;">
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+                    <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;">Distribusi Sentimen</span>
+                    <span class="font-mono font-tabular" style="font-size:11px;color:#64748b;">{{ sentiment.total_analyzed }} respon</span>
+                </div>
+
+                <!-- Multi-segment Proportional Bar -->
+                <div class="sentiment-proportional-bar">
+                    <div style="width: {{ sentiment.positive_pct }}%" class="bar-segment-positive" title="Positif: {{ sentiment.positive_pct }}%"></div>
+                    <div style="width: {{ sentiment.neutral_pct }}%" class="bar-segment-neutral" title="Netral: {{ sentiment.neutral_pct }}%"></div>
+                    <div style="width: {{ sentiment.negative_pct }}%" class="bar-segment-negative" title="Negatif: {{ sentiment.negative_pct }}%"></div>
+                </div>
+            </div>
+
+            <!-- Figures -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;padding-top:0.75rem;border-top:1px solid rgba(30,41,59,0.6);" class="font-tabular">
+                <div>
+                    <div style="display:flex;align-items:center;gap:0.35rem;font-size:10px;color:#34d399;font-weight:600;">
+                        <span class="status-dot" style="background:#34d399;"></span>
+                        <span>Positif</span>
+                    </div>
+                    <div style="font-size:15px;font-weight:700;color:#ffffff;margin-top:0.15rem;">{{ sentiment.positive_pct }}%</div>
+                    <p style="font-size:10px;color:#64748b;margin:0;">{{ sentiment.positive_count }} respon</p>
+                </div>
+
+                <div>
+                    <div style="display:flex;align-items:center;gap:0.35rem;font-size:10px;color:#94a3b8;font-weight:600;">
+                        <span class="status-dot" style="background:#94a3b8;"></span>
+                        <span>Netral</span>
+                    </div>
+                    <div style="font-size:15px;font-weight:700;color:#cbd5e1;margin-top:0.15rem;">{{ sentiment.neutral_pct }}%</div>
+                    <p style="font-size:10px;color:#64748b;margin:0;">{{ sentiment.neutral_count }} respon</p>
+                </div>
+
+                <div>
+                    <div style="display:flex;align-items:center;gap:0.35rem;font-size:10px;color:#fb7185;font-weight:600;">
+                        <span class="status-dot" style="background:#fb7185;"></span>
+                        <span>Kritis</span>
+                    </div>
+                    <div style="font-size:15px;font-weight:700;color:#cbd5e1;margin-top:0.15rem;">{{ sentiment.negative_pct }}%</div>
+                    <p style="font-size:10px;color:#64748b;margin:0;">{{ sentiment.negative_count }} masukan</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 2: Tone Breakdown -->
+        <div style="background:rgba(15,23,42,0.6);border:1px solid #1e293b;border-radius:12px;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;gap:0.75rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;">Kategori Tone Audiens</span>
+                <span style="font-size:11px;color:#60a5fa;font-weight:600;">{{ sentiment.dominant_tone }}</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:0.6rem;" class="font-tabular">
+                {% for tone in sentiment.tones %}
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:0.25rem;">
+                        <span style="color:#cbd5e1;">{{ tone.name }}</span>
+                        <span class="font-mono" style="color:#ffffff;font-weight:600;">{{ tone.pct }}%</span>
+                    </div>
+                    <div class="tone-progress-track">
+                        <div class="tone-progress-fill {{ tone.color_bar }}" style="width: {{ tone.pct }}%; background:#3b82f6;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Column 3: Sample Feedback / Voice of Audience -->
+        <div style="background:rgba(15,23,42,0.6);border:1px solid #1e293b;border-radius:12px;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;gap:0.75rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;">Voice of Audience (Sampel)</span>
+                <span style="font-size:10px;color:#64748b;font-family:var(--font-mono);">Komentar Publik</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:0.5rem;font-size:12px;">
+                <!-- Positive Quote -->
+                <div style="padding:0.6rem 0.75rem;border-radius:8px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);">
+                    <div style="display:flex;align-items:center;gap:0.35rem;color:#34d399;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:0.2rem;">
+                        <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                        <span>Respon Positif Teratas</span>
+                    </div>
+                    <p style="color:#cbd5e1;font-style:italic;font-size:11px;margin:0;line-height:1.4;">&ldquo;{{ sentiment.sample_positive_quote }}&rdquo;</p>
+                </div>
+
+                <!-- Constructive / Attention Quote -->
+                <div style="padding:0.6rem 0.75rem;border-radius:8px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.18);">
+                    <div style="display:flex;align-items:center;gap:0.35rem;color:#fbbf24;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:0.2rem;">
+                        <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008z"/></svg>
+                        <span>Masukan / Kritik Konstruktif</span>
+                    </div>
+                    <p style="color:#cbd5e1;font-style:italic;font-size:11px;margin:0;line-height:1.4;">&ldquo;{{ sentiment.sample_negative_quote }}&rdquo;</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Takeaway Insight Bar -->
+    <div style="padding:0.75rem 1rem;border-radius:10px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.18);display:flex;align-items:center;gap:0.5rem;font-size:12px;">
+        <svg style="width:16px;height:16px;color:#60a5fa;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+        </svg>
+        <span style="font-weight:600;color:#f1f5f9;">Insight Analitik:</span>
+        <span style="color:#94a3b8;">Sentimen audiens berada pada tingkat prima ({{ sentiment.positive_pct }}% positif). Didominasi nada <strong>{{ sentiment.dominant_tone }}</strong>, menandakan relevansi konten kuat.</span>
+    </div>
+
+</article>

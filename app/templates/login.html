@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login &bull; KPI Sosmed</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Pico CSS v2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body class="login-wrapper">
+
+    <article class="login-card">
+        <!-- Logo & Branding -->
+        <div style="text-align:center;margin-bottom:1.5rem;">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;color:#ffffff;margin:0 auto 0.75rem;box-shadow:0 4px 16px rgba(59,130,246,0.3);">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+            </div>
+            <h1 style="font-size:1.15rem;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.02em;">KPI Sosmed</h1>
+            <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">Masuk ke Dashboard Analitik Pribadi</p>
+        </div>
+
+        {% if error %}
+        <div style="margin-bottom:1.25rem;padding:0.65rem 0.85rem;border-radius:8px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.25);color:#fb7185;font-size:12px;display:flex;align-items:center;gap:0.5rem;">
+            <svg style="width:16px;height:16px;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path stroke-linecap="round" d="M12 8v4m0 4h.01" />
+            </svg>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="/login" method="post" style="margin:0;">
+            <div style="margin-bottom:1rem;">
+                <label for="username" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#cbd5e1;margin-bottom:0.35rem;display:block;">Username</label>
+                <input type="text" id="username" name="username" value="{{ username or '' }}" required autofocus placeholder="admin" style="font-size:13px;margin:0;">
+            </div>
+
+            <div style="margin-bottom:1.25rem;">
+                <label for="password" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#cbd5e1;margin-bottom:0.35rem;display:block;">Kata Sandi</label>
+                <input type="password" id="password" name="password" required placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" style="font-size:13px;margin:0;">
+            </div>
+
+            <button type="submit" class="contrast" style="width:100%;font-size:13px;font-weight:600;padding:0.65rem;border-radius:10px;background:#2563eb;border-color:#3b82f6;color:#ffffff;cursor:pointer;margin:0;">
+                Masuk ke Dashboard
+            </button>
+        </form>
+
+        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #1e293b;text-align:center;">
+            <p style="font-size:11px;color:#64748b;margin:0;font-family:var(--font-mono);">Self-Hosted Personal Creator Suite</p>
+        </div>
+    </article>
+
+</body>
+</html>

@@ -1,0 +1,790 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Pico CSS v2 Dark Theme Variable Overrides */
+:root,
+[data-theme="dark"] {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --pico-font-family: var(--font-sans);
+    --pico-font-family-monospace: var(--font-mono);
+
+    /* Backgrounds & Surfaces */
+    --pico-background-color: #07090e;
+    --pico-card-background-color: #0d121f;
+    --pico-card-border-color: #1e293b;
+    --pico-card-box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+
+    /* Text & Accents */
+    --pico-color: #e2e8f0;
+    --pico-muted-color: #94a3b8;
+    --pico-muted-border-color: #1e293b;
+    --pico-primary: #3b82f6;
+    --pico-primary-background: #2563eb;
+    --pico-primary-hover: #1d4ed8;
+    --pico-primary-border: #3b82f6;
+    --pico-primary-focus: rgba(59, 130, 246, 0.25);
+    --pico-primary-inverse: #ffffff;
+
+    /* Form Controls */
+    --pico-form-element-background-color: #0b0f19;
+    --pico-form-element-border-color: #1e293b;
+    --pico-form-element-color: #f1f5f9;
+    --pico-form-element-active-background-color: #0f172a;
+    --pico-form-element-active-border-color: #3b82f6;
+    --pico-form-element-focus-color: rgba(59, 130, 246, 0.25);
+    --pico-border-radius: 0.75rem;
+
+    /* Spacings & Typography */
+    --pico-font-size: 14px;
+    --pico-line-height: 1.5;
+    letter-spacing: -0.01em;
+}
+
+body {
+    background-color: var(--pico-background-color);
+    color: var(--pico-color);
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* Number display with tabular figures */
+.font-tabular,
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+.font-mono {
+    font-family: var(--font-mono);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+}
+
+/* HTMX Loading Indicator */
+.htmx-indicator {
+    display: none;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    display: inline-block;
+}
+
+/* ==========================================================================
+   Dashboard Layout (Sidebar + Main View)
+   ========================================================================== */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Sidebar */
+.dashboard-sidebar {
+    width: 260px;
+    background-color: #0a0e17;
+    border-right: 1px solid #1e293b;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    transition: transform 0.25s ease;
+}
+
+.sidebar-brand {
+    height: 64px;
+    padding: 0 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #1e293b;
+}
+
+.sidebar-brand a {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-logo-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+/* Reset Pico CSS nav rules for sidebar and vertical navigation */
+nav.sidebar-nav,
+.sidebar-nav,
+.dashboard-sidebar nav {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    gap: 0.25rem !important;
+    flex: 1 !important;
+    padding: 1.25rem 0.75rem !important;
+    margin: 0 !important;
+    height: auto !important;
+}
+
+.nav-section-title {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    padding: 1rem 0.75rem 0.35rem;
+    margin: 0 !important;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #94a3b8;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.nav-link:hover {
+    color: #f1f5f9;
+    background-color: rgba(30, 41, 59, 0.5);
+    text-decoration: none;
+}
+
+.nav-link.active {
+    color: #60a5fa;
+    background-color: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.25);
+    font-weight: 600;
+}
+
+.nav-link svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.sidebar-user {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #1e293b;
+    background: rgba(7, 9, 14, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Main View Wrapper */
+.dashboard-main {
+    flex: 1;
+    margin-left: 260px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background-color: var(--pico-background-color);
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Desktop Collapsed State */
+@media (min-width: 769px) {
+    .dashboard-container.sidebar-collapsed .dashboard-sidebar {
+        transform: translateX(-100%);
+    }
+    .dashboard-container.sidebar-collapsed .dashboard-main {
+        margin-left: 0;
+    }
+    .mobile-close-btn {
+        display: none !important;
+    }
+}
+
+/* Topbar Header */
+.dashboard-header {
+    height: 64px;
+    background-color: rgba(10, 14, 23, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid #1e293b;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin-bottom: 0 !important;
+}
+
+.sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.dashboard-content {
+    flex: 1;
+    padding: 1.5rem;
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+/* Mobile Sidebar Drawer */
+.mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 40;
+}
+
+@media (max-width: 768px) {
+    .dashboard-sidebar {
+        transform: translateX(-100%);
+    }
+    .dashboard-sidebar.open {
+        transform: translateX(0);
+    }
+    .dashboard-main {
+        margin-left: 0 !important;
+    }
+    .dashboard-content {
+        padding: 1rem;
+    }
+    .mobile-close-btn {
+        display: inline-flex;
+    }
+}
+
+/* ==========================================================================
+   Grids & Responsive Cards
+   ========================================================================== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (min-width: 1280px) {
+    .kpi-grid-5 {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.25rem;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+/* General Card */
+.dashboard-card {
+    background-color: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 1.25rem;
+    box-shadow: var(--pico-card-box-shadow);
+    margin-bottom: 1.25rem;
+}
+
+/* KPI Metric Card */
+.kpi-card {
+    background-color: #0d121f;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.kpi-card:hover {
+    border-color: #334155;
+    transform: translateY(-1px);
+}
+
+.kpi-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.kpi-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+}
+
+.kpi-icon-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kpi-card-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.kpi-card-footer {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+}
+
+.kpi-card-caption {
+    font-size: 11px;
+    color: #64748b;
+    margin: 0.25rem 0 0;
+}
+
+/* Delta growth pills */
+.delta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+
+.delta-positive {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.delta-negative {
+    background-color: rgba(244, 63, 94, 0.12);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.delta-neutral {
+    background-color: rgba(148, 163, 184, 0.12);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* ==========================================================================
+   Badges, Pills & Indicators
+   ========================================================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    text-transform: uppercase;
+}
+
+.badge-emerald,
+.bg-emerald-500\/10 {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+.badge-amber,
+.bg-amber-500\/10,
+.bg-amber-500\/15 {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+.badge-rose,
+.bg-rose-500\/10,
+.bg-rose-500\/15 {
+    background-color: rgba(244, 63, 94, 0.12) !important;
+    color: #fb7185 !important;
+    border-color: rgba(244, 63, 94, 0.25) !important;
+}
+
+.badge-blue,
+.bg-blue-500\/10,
+.bg-sky-500\/10 {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    color: #60a5fa !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+.badge-purple,
+.bg-purple-500\/10 {
+    background-color: rgba(168, 85, 247, 0.12) !important;
+    color: #c084fc !important;
+    border-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+.badge-teal,
+.bg-teal-500\/10 {
+    background-color: rgba(20, 184, 166, 0.12) !important;
+    color: #2dd4bf !important;
+    border-color: rgba(20, 184, 166, 0.25) !important;
+}
+
+.badge-slate,
+.bg-slate-800 {
+    background-color: #1e293b !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+/* Fallbacks for dynamically computed classes */
+.text-emerald-400, .text-emerald-500 { color: #34d399 !important; }
+.text-rose-400, .text-rose-500 { color: #fb7185 !important; }
+.text-amber-400, .text-amber-500 { color: #fbbf24 !important; }
+.text-sky-400, .text-blue-400 { color: #60a5fa !important; }
+.text-purple-400 { color: #c084fc !important; }
+.text-slate-300 { color: #cbd5e1 !important; }
+.text-slate-400 { color: #94a3b8 !important; }
+.text-slate-500 { color: #64748b !important; }
+.text-white { color: #ffffff !important; }
+
+/* Status dot */
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.status-dot.online {
+    background-color: #10b981;
+    box-shadow: 0 0 6px #10b981;
+}
+
+/* ==========================================================================
+   Data Tables
+   ========================================================================== */
+.table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    border-radius: var(--pico-border-radius);
+    border: 1px solid #1e293b;
+    background-color: #0d121f;
+}
+
+.table-wrapper table {
+    margin: 0;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.table-wrapper thead th {
+    background-color: #0a0e17;
+    border-bottom: 1px solid #1e293b;
+    color: #94a3b8;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+.table-wrapper tbody td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(30, 41, 59, 0.6);
+    color: #e2e8f0;
+}
+
+.table-wrapper tbody tr:hover {
+    background-color: rgba(30, 41, 59, 0.3);
+}
+
+/* ==========================================================================
+   Sentiment & Visual Bars
+   ========================================================================== */
+.sentiment-proportional-bar {
+    width: 100%;
+    height: 12px;
+    background-color: #1e293b;
+    border-radius: 9999px;
+    overflow: hidden;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    margin: 0.5rem 0;
+}
+
+.bar-segment-positive {
+    background-color: #10b981;
+    border-radius: 9999px 0 0 9999px;
+    transition: width 0.4s ease;
+}
+
+.bar-segment-neutral {
+    background-color: #64748b;
+    transition: width 0.4s ease;
+}
+
+.bar-segment-negative {
+    background-color: #f43f5e;
+    border-radius: 0 9999px 9999px 0;
+    transition: width 0.4s ease;
+}
+
+/* Tone meter item */
+.tone-row {
+    margin-bottom: 0.6rem;
+}
+
+.tone-row-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 0.25rem;
+}
+
+.tone-progress-track {
+    height: 6px;
+    background-color: #1e293b;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.tone-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+/* ==========================================================================
+   Buttons, Toolbar & Group Navigation
+   ========================================================================== */
+.btn-group {
+    display: inline-flex;
+    background-color: #0b0f19;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.btn-filter {
+    padding: 0.35rem 0.75rem;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 6px;
+    color: #94a3b8;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    margin: 0;
+}
+
+.btn-filter:hover {
+    color: #f1f5f9;
+    background-color: rgba(30, 41, 59, 0.6);
+}
+
+.btn-filter.active {
+    background-color: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Custom UI Buttons */
+.btn-ui {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.btn-ui-primary {
+    background-color: #2563eb;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+.btn-ui-primary:hover {
+    background-color: #1d4ed8;
+    color: #ffffff;
+}
+
+.btn-ui-secondary {
+    background-color: #1e293b;
+    color: #cbd5e1;
+    border-color: #334155;
+}
+.btn-ui-secondary:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+.btn-ui-danger {
+    background-color: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+    border-color: rgba(244, 63, 94, 0.3);
+}
+.btn-ui-danger:hover {
+    background-color: #e11d48;
+    color: #ffffff;
+}
+
+/* Prevent Pico CSS default button bottom margin in dashboard toolbars and flex containers */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.btn-ui,
+.btn-filter {
+    margin-bottom: 0 !important;
+}
+
+/* ==========================================================================
+   Modals & Dialogs
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal-card {
+    background-color: #0e1320;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 680px;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    padding: 1rem 1.25rem;
+    background-color: rgba(15, 23, 42, 0.5);
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-body {
+    padding: 1.25rem;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+.modal-footer {
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid #1e293b;
+    background-color: rgba(15, 23, 42, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* ==========================================================================
+   Login Page Specific
+   ========================================================================== */
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background-color: var(--pico-background-color);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 380px;
+    background-color: #0d121f;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+}
+
+/* Post thumbnail in tables */
+.post-thumbnail {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-cover: cover;
+    background-color: #0f172a;
+    border: 1px solid #1e293b;
+    flex-shrink: 0;
+}

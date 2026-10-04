@@ -1,0 +1,123 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: kpi_app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - kpi_net
+
+  n8n:
+    image: n8nio/n8n:1.80.0
+    container_name: kpi_n8n
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=${TZ:-Asia/Jakarta}
+      - TZ=${TZ:-Asia/Jakarta}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - INGEST_API_KEY=${INGEST_API_KEY}
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - kpi_net
+
+  n8n-import:
+    image: n8nio/n8n:1.80.0
+    container_name: kpi_n8n_import
+    restart: "no"
+    depends_on:
+      n8n:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    entrypoint: ["n8n", "import:workflow", "--separate", "--input=/workflows"]
+    networks:
+      - kpi_net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: kpi_tunnel
+    restart: unless-stopped
+    profiles:
+      - tunnel
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    networks:
+      - kpi_net
+
+  tools:
+    build:
+      context: .
+      target: test
+    container_name: kpi_tools
+    profiles:
+      - tools
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
+    networks:
+      - kpi_net
+
+  tests:
+    build:
+      context: .
+      target: test
+    container_name: kpi_tests
+    profiles:
+      - test
+    environment:
+      - TURSO_DATABASE_URL=file:/tmp/test.db
+      - TURSO_AUTH_TOKEN=
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-8H2zLdGf4jKmN9pQrStUvWxYz0123456789abcdef0=}
+      - APP_SECRET_KEY=${APP_SECRET_KEY:-test_app_secret_key_32_characters_12345}
+      - INGEST_API_KEY=${INGEST_API_KEY:-test_ingest_key_valid_123}
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD_HASH=$2b$12$123456789012345678901e1F0BfqM3uJ17z9qj2.FkGgTf7kHjAmi
+      - BASE_URL=http://testserver
+    command: ["pytest", "-q"]
+    networks:
+      - kpi_net
+
+volumes:
+  n8n_data:
+
+networks:
+  kpi_net:
+    driver: bridge

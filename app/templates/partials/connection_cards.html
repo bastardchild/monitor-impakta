@@ -1,0 +1,115 @@
+<div class="grid-3">
+    {% for plat_id, p in platforms.items() %}
+    <article class="dashboard-card" style="margin:0;display:flex;flex-direction:column;justify-content:space-between;gap:1.25rem;">
+        
+        <!-- Card Top: Header & Status -->
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    {% if p.avatar_url %}
+                    <img src="{{ p.avatar_url }}" alt="{{ p.name }}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;border:1px solid #1e293b;">
+                    {% else %}
+                    <div style="width:40px;height:40px;border-radius:10px;background:#0f172a;border:1px solid #1e293b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        {% if plat_id == 'youtube' %}
+                        <svg style="width:20px;height:20px;color:#ef4444;" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        {% elif plat_id == 'instagram' %}
+                        <svg style="width:20px;height:20px;color:#f472b6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                        </svg>
+                        {% else %}
+                        <svg style="width:20px;height:20px;color:#22d3ee;" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.98v8.63a6.83 6.83 0 0 1-6.84 6.84 6.83 6.83 0 0 1-6.83-6.84 6.83 6.83 0 0 1 6.83-6.83c.36 0 .72.03 1.07.1v4.11a2.82 2.82 0 0 0-1.07-.2 2.82 2.82 0 0 0-2.82 2.82 2.82 2.82 0 0 0 2.82 2.82 2.82 2.82 0 0 0 2.82-2.82V.02z"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div>
+                        <h4 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;">{{ p.name }}</h4>
+                        <p style="font-size:11px;color:#94a3b8;margin:0.15rem 0 0;">{{ p.display_name }}</p>
+                    </div>
+                </div>
+
+                <div class="delta-pill font-mono {% if p.status == 'connected' %}delta-positive{% elif p.status == 'needs_reauth' %}delta-negative{% else %}delta-neutral{% endif %}">
+                    <span class="status-dot {% if p.status == 'connected' %}online{% endif %}"></span>
+                    <span>{{ p.badge_text }}</span>
+                </div>
+            </div>
+
+            <!-- Details List -->
+            <div style="display:flex;flex-direction:column;gap:0.4rem;font-size:12px;color:#94a3b8;padding-top:0.75rem;border-top:1px solid #1e293b;">
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:#64748b;">Terhubung:</span>
+                    <span style="font-weight:500;color:#cbd5e1;" class="font-tabular">{{ p.connected_at }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:#64748b;">Kedaluwarsa:</span>
+                    <span class="{{ p.expires_at_color }} font-tabular">{{ p.expires_at_human }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:#64748b;">Sinkronisasi:</span>
+                    <span style="font-weight:500;color:#cbd5e1;" class="font-tabular">{{ p.last_sync }}</span>
+                </div>
+            </div>
+
+            <!-- Error message if any -->
+            {% if p.last_error %}
+            <div style="padding:0.65rem 0.75rem;border-radius:8px;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.25);color:#fb7185;font-size:11px;display:flex;gap:0.4rem;align-items:flex-start;">
+                <svg style="width:14px;height:14px;flex-shrink:0;margin-top:0.1rem;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" />
+                    <path stroke-linecap="round" d="M12 8v4m0 4h.01" />
+                </svg>
+                <span style="line-height:1.3;">{{ p.last_error }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Card Bottom: Actions -->
+        <div style="padding-top:0.75rem;border-top:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+            {% if p.status == 'connected' %}
+            <div style="display:flex;gap:0.5rem;width:100%;">
+                <button type="button" 
+                        hx-post="/connections/{{ plat_id }}/sync"
+                        hx-target="#sync-result-{{ plat_id }}"
+                        hx-swap="innerHTML"
+                        class="btn-ui btn-ui-secondary" style="flex:1;justify-content:center;">
+                    <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    <span>Sync</span>
+                    <svg class="htmx-indicator" style="width:12px;height:12px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none">
+                        <circle opacity="0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path opacity="0.75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                </button>
+                <button type="button" 
+                        @click="confirmDisconnect('{{ plat_id }}', '{{ p.name }}')"
+                        class="btn-ui btn-ui-danger">
+                    Putuskan
+                </button>
+            </div>
+            {% elif p.status == 'needs_reauth' %}
+            <div style="display:flex;gap:0.5rem;width:100%;">
+                <a href="/connect/{{ plat_id }}" class="btn-ui btn-ui-primary" style="flex:1;justify-content:center;background:#d97706;border-color:#f59e0b;">
+                    Otorisasi Ulang
+                </a>
+                <button type="button" 
+                        @click="confirmDisconnect('{{ plat_id }}', '{{ p.name }}')"
+                        class="btn-ui btn-ui-danger">
+                    Putuskan
+                </button>
+            </div>
+            {% else %}
+            <a href="/connect/{{ plat_id }}" class="btn-ui btn-ui-primary" style="width:100%;justify-content:center;">
+                Hubungkan {{ p.name }}
+            </a>
+            {% endif %}
+        </div>
+
+        <div id="sync-result-{{ plat_id }}"></div>
+    </article>
+    {% endfor %}
+</div>

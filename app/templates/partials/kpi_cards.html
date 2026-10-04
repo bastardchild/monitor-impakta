@@ -1,0 +1,158 @@
+<div class="kpi-grid kpi-grid-5">
+    
+    <!-- 1. Followers / Subscribers -->
+    <article class="kpi-card">
+        <div class="kpi-card-header">
+            <span class="kpi-card-title">
+                {% if platform == 'youtube' %}Subscribers{% else %}Pengikut (Followers){% endif %}
+            </span>
+            <div class="kpi-icon-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+            </div>
+        </div>
+        <div>
+            <div class="kpi-card-footer">
+                <span class="kpi-card-value font-tabular">
+                    {{ kpi.total_followers_formatted }}
+                </span>
+                <span class="delta-pill {% if kpi.followers_growth_abs >= 0 %}delta-positive{% else %}delta-negative{% endif %}">
+                    {% if kpi.followers_growth_abs >= 0 %}
+                    <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg>
+                    {% else %}
+                    <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                    {% endif %}
+                    {{ kpi.followers_growth_abs_formatted }} ({{ kpi.followers_growth_pct }}%)
+                </span>
+            </div>
+            <p class="kpi-card-caption">Pertumbuhan periode {{ kpi.days }} hari</p>
+        </div>
+    </article>
+
+    <!-- 2. Tayangan & Impresi (Views & Impressions) -->
+    <article class="kpi-card">
+        <div class="kpi-card-header">
+            <span class="kpi-card-title">Tayangan & Impresi</span>
+            <div class="kpi-icon-badge" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.25);">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+        </div>
+        <div>
+            <div class="kpi-card-footer">
+                <span class="kpi-card-value font-tabular">
+                    {{ kpi.total_views_formatted }}
+                </span>
+                <span class="delta-pill delta-neutral">
+                    {{ kpi.total_impressions_formatted }} Impresi
+                </span>
+            </div>
+            <p class="kpi-card-caption">Views akumulatif & total impresi</p>
+        </div>
+    </article>
+
+    <!-- 3. Jangkauan Akun (Reach) -->
+    <article class="kpi-card">
+        <div class="kpi-card-header">
+            <span class="kpi-card-title">Jangkauan (Reach)</span>
+            <div class="kpi-icon-badge" style="background:rgba(20,184,166,0.12);color:#2dd4bf;border:1px solid rgba(20,184,166,0.25);">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" />
+                    <circle cx="12" cy="12" r="4" />
+                    <path stroke-linecap="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3" />
+                </svg>
+            </div>
+        </div>
+        <div>
+            <div class="kpi-card-footer">
+                <span class="kpi-card-value font-tabular">
+                    {{ kpi.total_reach_formatted }}
+                </span>
+                <span class="delta-pill delta-neutral">Akun Unik</span>
+            </div>
+            <p class="kpi-card-caption">Estimasi jangkauan audiens unik</p>
+        </div>
+    </article>
+
+    <!-- 4. Tingkat Interaksi (Engagement Rate: Views, Likes, Tag/Simpan, Share) -->
+    <article class="kpi-card">
+        <div class="kpi-card-header">
+            <span class="kpi-card-title">Interaksi & ER</span>
+            <div class="kpi-icon-badge" style="background:rgba(236,72,153,0.12);color:#f472b6;border:1px solid rgba(236,72,153,0.25);">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                </svg>
+            </div>
+        </div>
+        <div>
+            <div class="kpi-card-footer">
+                <span class="kpi-card-value font-tabular">
+                    {{ kpi.engagement_rate }}%
+                </span>
+                <span class="delta-pill" style="color:#f472b6;background:rgba(236,72,153,0.12);border:1px solid rgba(236,72,153,0.25);">ER per Views</span>
+            </div>
+            <!-- Interaction Breakdown: Likes, Tag/Simpan, Share -->
+            <div style="margin-top:0.5rem;padding-top:0.4rem;border-top:1px solid #1e293b;display:grid;grid-template-columns:repeat(3,1fr);gap:0.25rem;font-size:10px;" class="font-tabular">
+                <div>
+                    <span style="color:#64748b;display:block;">Likes</span>
+                    <strong style="color:#e2e8f0;">{{ kpi.total_likes_formatted }}</strong>
+                </div>
+                <div>
+                    <span style="color:#64748b;display:block;">Tag/Save</span>
+                    <strong style="color:#e2e8f0;">{{ kpi.total_tags_saves_formatted }}</strong>
+                </div>
+                <div>
+                    <span style="color:#64748b;display:block;">Share</span>
+                    <strong style="color:#e2e8f0;">{{ kpi.total_shares_formatted }}</strong>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    <!-- 5. Jumlah Posting & Frekuensi / Watch Time -->
+    <article class="kpi-card">
+        {% if platform == 'youtube' %}
+        <div class="kpi-card-header">
+            <span class="kpi-card-title">Durasi Tonton (Watch Time)</span>
+            <div class="kpi-icon-badge" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+        </div>
+        <div>
+            <div class="kpi-card-footer">
+                <span class="kpi-card-value font-tabular">
+                    {{ kpi.total_watch_time_hours }} <span style="font-size:13px;font-weight:400;color:#94a3b8;">Jam</span>
+                </span>
+                <span class="delta-pill delta-neutral">{{ kpi.post_count }} video</span>
+            </div>
+            <p class="kpi-card-caption">Estimasi durasi tonton akumulatif</p>
+        </div>
+        {% else %}
+        <div class="kpi-card-header">
+            <span class="kpi-card-title">Jumlah Posting</span>
+            <div class="kpi-icon-badge" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+            </div>
+        </div>
+        <div>
+            <div class="kpi-card-footer">
+                <span class="kpi-card-value font-tabular">
+                    {{ kpi.post_count }} <span style="font-size:12px;font-weight:400;color:#94a3b8;">Posting</span>
+                </span>
+                <span class="delta-pill delta-positive">
+                    {{ kpi.post_frequency_per_week }} / mgg
+                </span>
+            </div>
+            <p class="kpi-card-caption">Frekuensi publikasi konten aktif</p>
+        </div>
+        {% endif %}
+    </article>
+
+</div>

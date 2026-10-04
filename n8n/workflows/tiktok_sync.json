@@ -1,0 +1,247 @@
+{
+  "name": "TikTok KPI Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "tt-schedule-trigger",
+      "name": "Schedule Trigger (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/sync-tiktok",
+        "options": {}
+      },
+      "id": "tt-webhook-trigger",
+      "name": "Webhook Trigger (Sync Sekarang)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $headers['x-webhook-secret'] || $json.body?.secret || '' }}",
+              "value2": "={{ $env.N8N_WEBHOOK_SECRET || '' }}"
+            }
+          ]
+        }
+      },
+      "id": "tt-validate-secret",
+      "name": "Validasi Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [320, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://app:8000/api/internal/credentials/tiktok",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 3000
+        }
+      },
+      "id": "tt-get-credentials",
+      "name": "Ambil Token TikTok dari App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://open.tiktokapis.com/v2/user/info/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token TikTok dari App').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "open_id,display_name,follower_count,likes_count,video_count"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tt-fetch-user-info",
+      "name": "Fetch TikTok User Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/video/list/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token TikTok dari App').item.json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"max_count\": 20}",
+        "options": {}
+      },
+      "id": "tt-fetch-videos",
+      "name": "Fetch TikTok Video List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const userInfo = $('Fetch TikTok User Info').first().json;\nconst user = (userInfo.data && userInfo.data.user) || userInfo.user || {};\nconst today = new Date().toISOString().split('T')[0];\n\nconst metrics = [{\n  platform_id: 'tiktok',\n  date: today,\n  followers: parseInt(user.follower_count || 0),\n  views: 0,\n  reach: 0,\n  impressions: 0,\n  watch_time_sec: 0,\n  engagement_count: parseInt(user.likes_count || 0)\n}];\n\nreturn [{ json: { metrics } }];"
+      },
+      "id": "tt-normalize",
+      "name": "Normalisasi Data TikTok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/account-metrics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "tt-post-ingest",
+      "name": "Ingest ke Turso / App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (6h)": {
+      "main": [
+        [
+          {
+            "node": "Ambil Token TikTok dari App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (Sync Sekarang)": {
+      "main": [
+        [
+          {
+            "node": "Validasi Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validasi Secret": {
+      "main": [
+        [
+          {
+            "node": "Ambil Token TikTok dari App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Token TikTok dari App": {
+      "main": [
+        [
+          {
+            "node": "Fetch TikTok User Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch TikTok Video List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch TikTok User Info": {
+      "main": [
+        [
+          {
+            "node": "Normalisasi Data TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisasi Data TikTok": {
+      "main": [
+        [
+          {
+            "node": "Ingest ke Turso / App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,246 @@
+{
+  "name": "Instagram KPI Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "ig-schedule-trigger",
+      "name": "Schedule Trigger (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/sync-instagram",
+        "options": {}
+      },
+      "id": "ig-webhook-trigger",
+      "name": "Webhook Trigger (Sync Sekarang)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $headers['x-webhook-secret'] || $json.body?.secret || '' }}",
+              "value2": "={{ $env.N8N_WEBHOOK_SECRET || '' }}"
+            }
+          ]
+        }
+      },
+      "id": "ig-validate-secret",
+      "name": "Validasi Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [320, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://app:8000/api/internal/credentials/instagram",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 3000
+        }
+      },
+      "id": "ig-get-credentials",
+      "name": "Ambil Token Instagram dari App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Ambil Token Instagram dari App').item.json.account_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token Instagram dari App').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "followers_count,media_count"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ig-fetch-profile",
+      "name": "Fetch Profile Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Ambil Token Instagram dari App').item.json.account_id }}/insights",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token Instagram dari App').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "reach,profile_views" },
+            { "name": "period", "value": "day" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ig-fetch-insights",
+      "name": "Fetch Insights Akun",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const profile = $('Fetch Profile Instagram').first().json;\nconst today = new Date().toISOString().split('T')[0];\n\nconst metrics = [{\n  platform_id: 'instagram',\n  date: today,\n  followers: parseInt(profile.followers_count || 0),\n  views: 0,\n  reach: 0,\n  impressions: 0,\n  watch_time_sec: 0,\n  engagement_count: 0\n}];\n\nreturn [{ json: { metrics } }];"
+      },
+      "id": "ig-normalize",
+      "name": "Normalisasi Data Instagram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/account-metrics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "ig-post-ingest",
+      "name": "Ingest ke Turso / App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (6h)": {
+      "main": [
+        [
+          {
+            "node": "Ambil Token Instagram dari App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (Sync Sekarang)": {
+      "main": [
+        [
+          {
+            "node": "Validasi Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validasi Secret": {
+      "main": [
+        [
+          {
+            "node": "Ambil Token Instagram dari App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Token Instagram dari App": {
+      "main": [
+        [
+          {
+            "node": "Fetch Profile Instagram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Insights Akun",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Profile Instagram": {
+      "main": [
+        [
+          {
+            "node": "Normalisasi Data Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisasi Data Instagram": {
+      "main": [
+        [
+          {
+            "node": "Ingest ke Turso / App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

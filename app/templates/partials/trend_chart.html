@@ -1,0 +1,41 @@
+<article class="dashboard-card"
+         x-data
+         x-init="$nextTick(() => initKpiChart('kpi-trend-canvas', 'kpi-chart-payload'))"
+         style="margin:0;">
+    
+    <!-- Safely isolated JSON payload prevents attribute quote breaks -->
+    <script type="application/json" id="kpi-chart-payload">{{ chart_json | safe }}</script>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:1.25rem;">
+        <div>
+            <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Tren Performa Harian</h3>
+            <p style="font-size:12px;color:#94a3b8;margin:0.2rem 0 0;">Dinamika penayangan dan pertumbuhan pengikut seiring waktu</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;font-size:12px;font-weight:500;">
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#38bdf8;box-shadow:0 0 8px rgba(56,189,248,0.4);"></span>
+                <span style="color:#cbd5e1;">Views</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#34d399;box-shadow:0 0 8px rgba(52,211,153,0.4);"></span>
+                <span style="color:#cbd5e1;">Followers</span>
+            </div>
+        </div>
+    </div>
+
+    {% if chart_data.labels and chart_data.labels | length > 0 %}
+    <div style="position:relative;height:288px;width:100%;">
+        <canvas id="kpi-trend-canvas"></canvas>
+    </div>
+    {% else %}
+    <div style="height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <div style="width:48px;height:48px;border-radius:12px;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;color:#94a3b8;margin-bottom:0.75rem;">
+            <svg style="width:24px;height:24px;" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+        </div>
+        <p style="font-size:13px;font-weight:500;color:#cbd5e1;margin:0;">Belum ada metrik historis untuk rentang tanggal ini.</p>
+        <p style="font-size:11px;color:#64748b;margin:0.25rem 0 0;">Jalankan sinkronisasi atau hubungkan akun di menu Pengaturan.</p>
+    </div>
+    {% endif %}
+</article>

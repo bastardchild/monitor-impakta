@@ -1,0 +1,168 @@
+{% if logs %}
+<div class="table-wrapper" x-data="{ selectedLog: null, modalOpen: false }">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="padding-left:1rem;">Error ID & Waktu</th>
+                <th>Kategori</th>
+                <th>Kode & Endpoint</th>
+                <th>Pesan Error</th>
+                <th style="text-align:center;">Status</th>
+                <th style="text-align:right;padding-right:1rem;">Aksi</th>
+            </tr>
+        </thead>
+        <tbody class="font-tabular">
+            {% for log in logs %}
+            <tr>
+                <!-- Error ID & Timestamp -->
+                <td style="padding-left:1rem;white-space:nowrap;">
+                    <div style="display:flex;align-items:center;gap:0.35rem;">
+                        <span class="font-mono" style="font-size:11px;color:#60a5fa;font-weight:700;">{{ log.id }}</span>
+                        <button type="button" 
+                                @click="navigator.clipboard.writeText('{{ log.id }}')"
+                                title="Salin Error ID"
+                                style="background:none;border:none;color:#64748b;cursor:pointer;padding:0.15rem;display:inline-flex;">
+                            <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                        </button>
+                    </div>
+                    <div class="font-mono" style="font-size:10px;color:#64748b;margin-top:0.15rem;">
+                        {{ log.created_at_formatted }}
+                    </div>
+                </td>
+
+                <!-- Category -->
+                <td style="white-space:nowrap;">
+                    <span class="badge {{ log.badge_class }}">
+                        {{ log.category }}
+                    </span>
+                    {% if log.platform_id %}
+                    <div class="font-mono" style="font-size:10px;color:#64748b;margin-top:0.25rem;text-transform:capitalize;">
+                        Platform: <strong style="color:#cbd5e1;">{{ log.platform_id }}</strong>
+                    </div>
+                    {% endif %}
+                </td>
+
+                <!-- Code & Path -->
+                <td style="white-space:nowrap;">
+                    <span class="font-mono" style="font-size:12px;font-weight:700;color:#f1f5f9;">{{ log.error_code }}</span>
+                    {% if log.path %}
+                    <div class="font-mono" style="font-size:10px;color:#64748b;margin-top:0.15rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;" title="{{ log.method or '' }} {{ log.path }}">
+                        <strong style="color:#94a3b8;text-transform:uppercase;">{{ log.method or 'GET' }}</strong> {{ log.path }}
+                    </div>
+                    {% elif log.exception_type %}
+                    <div class="font-mono" style="font-size:10px;color:#64748b;margin-top:0.15rem;">
+                        {{ log.exception_type }}
+                    </div>
+                    {% endif %}
+                </td>
+
+                <!-- Message -->
+                <td style="min-width:220px;max-width:400px;">
+                    <p style="font-size:12px;color:#cbd5e1;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ log.message }}">
+                        {{ log.message }}
+                    </p>
+                </td>
+
+                <!-- Status Code -->
+                <td style="white-space:nowrap;text-align:center;">
+                    {% if log.status_code %}
+                        {% if log.status_code >= 500 %}
+                        <span class="delta-pill delta-negative font-mono" style="font-weight:700;">{{ log.status_code }}</span>
+                        {% elif log.status_code >= 400 %}
+                        <span class="delta-pill font-mono" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);font-weight:700;">{{ log.status_code }}</span>
+                        {% else %}
+                        <span class="delta-pill delta-neutral font-mono">{{ log.status_code }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color:#64748b;" class="font-mono">-</span>
+                    {% endif %}
+                </td>
+
+                <!-- Action Button -->
+                <td style="white-space:nowrap;text-align:right;padding-right:1rem;">
+                    <button type="button" 
+                            @click='selectedLog = {{ log | tojson | safe }}; modalOpen = true'
+                            class="btn-ui btn-ui-secondary" style="padding:0.25rem 0.55rem;font-size:11px;">
+                        <svg style="width:13px;height:13px;color:#94a3b8;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>Detail</span>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Modal Detail Log -->
+    <div x-show="modalOpen" 
+         class="modal-overlay"
+         x-transition.opacity
+         x-cloak>
+        <div class="modal-card" @click.outside="modalOpen = false">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                    <span class="status-dot" style="background:#f43f5e;width:8px;height:8px;"></span>
+                    <div>
+                        <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;">Detail Error Event</h3>
+                        <p class="font-mono" style="font-size:11px;color:#94a3b8;margin:0.15rem 0 0;" x-text="selectedLog ? selectedLog.id : ''"></p>
+                    </div>
+                </div>
+                <button type="button" @click="modalOpen = false" class="btn-filter" style="padding:0.25rem;">
+                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem;">
+                <!-- Meta Grid -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;background:#07090e;padding:0.85rem;border-radius:10px;border:1px solid #1e293b;font-size:12px;">
+                    <div>
+                        <span class="font-mono" style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;">Kode</span>
+                        <strong class="font-mono" style="color:#ffffff;" x-text="selectedLog ? selectedLog.error_code : '-'"></strong>
+                    </div>
+                    <div>
+                        <span class="font-mono" style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;">Kategori</span>
+                        <strong class="font-mono" style="color:#ffffff;text-transform:uppercase;" x-text="selectedLog ? selectedLog.category : '-'"></strong>
+                    </div>
+                    <div>
+                        <span class="font-mono" style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;">Status HTTP</span>
+                        <strong class="font-mono" style="color:#ffffff;" x-text="selectedLog && selectedLog.status_code ? selectedLog.status_code : '-'"></strong>
+                    </div>
+                    <div>
+                        <span class="font-mono" style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;">Platform</span>
+                        <strong class="font-mono" style="color:#ffffff;text-transform:capitalize;" x-text="selectedLog && selectedLog.platform_id ? selectedLog.platform_id : '-'"></strong>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div>
+                    <label class="font-mono" style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.35rem;display:block;">Pesan Error</label>
+                    <div class="font-mono" style="padding:0.75rem;background:#07090e;border:1px solid #1e293b;border-radius:8px;font-size:12px;color:#fda4af;word-break:break-word;" x-text="selectedLog ? selectedLog.message : ''"></div>
+                </div>
+
+                <!-- Sanitized Details / Stack Trace -->
+                <div>
+                    <label class="font-mono" style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.35rem;display:block;">Context & Details (Sanitized)</label>
+                    <pre class="font-mono" style="padding:0.75rem;background:#07090e;border:1px solid #1e293b;border-radius:8px;font-size:11px;color:#cbd5e1;max-height:240px;overflow-x:auto;white-space:pre-wrap;line-height:1.4;margin:0;"
+                         x-text="selectedLog && selectedLog.details ? JSON.stringify(selectedLog.details, null, 2) : '{}'"></pre>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" @click="modalOpen = false" class="btn-ui btn-ui-secondary">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div style="padding:4rem 1rem;text-align:center;">
+    <div style="width:48px;height:48px;border-radius:12px;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;color:#34d399;margin:0 auto 0.75rem;">
+        <svg style="width:24px;height:24px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;">Tidak Ada Error Tercatat</h3>
+    <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">Semua sistem beroperasi normal tanpa kegagalan yang tercatat untuk filter ini.</p>
+</div>
+{% endif %}

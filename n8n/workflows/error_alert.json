@@ -1,0 +1,61 @@
+{
+  "name": "Sync Error Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "err-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const execution = $json.execution;\nconst workflow = $json.workflow;\n\nreturn [{\n  json: {\n    workflow_name: workflow.name,\n    workflow_id: workflow.id,\n    error_message: execution.error ? execution.error.message : 'Unknown error',\n    execution_id: execution.id,\n    time: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "err-format",
+      "name": "Format Error Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "err-log",
+      "name": "Catat Error",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [580, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Message": {
+      "main": [
+        [
+          {
+            "node": "Catat Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

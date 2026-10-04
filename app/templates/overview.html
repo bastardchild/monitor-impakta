@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Ringkasan Metrik &bull; KPI Sosmed{% endblock %}
+{% block page_title %}Ringkasan Multi-Platform{% endblock %}
+
+{% block filter_controls %}
+<!-- Filter Periode (HTMX + Alpine) -->
+<div x-data="{ 
+    selectedRange: '{{ range or '30d' }}',
+    customOpen: false,
+    customStart: '{{ start or '' }}',
+    customEnd: '{{ end or '' }}',
+    applyRange(r) {
+        this.selectedRange = r;
+        this.customOpen = false;
+        let url = '/?range=' + r;
+        window.history.pushState({}, '', url);
+        htmx.ajax('GET', '/partials/kpi-cards?range=' + r + '&platform=all', {target: '#kpi-cards-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/trend-chart?range=' + r + '&platform=all', {target: '#trend-chart-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/sentiment-insight?range=' + r + '&platform=all', {target: '#sentiment-insight-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/top-posts?range=' + r + '&platform=all', {target: '#top-posts-container', swap: 'innerHTML'});
+    },
+    applyCustom() {
+        if (!this.customStart || !this.customEnd) return;
+        this.selectedRange = 'custom';
+        this.customOpen = false;
+        let params = 'range=custom&start=' + this.customStart + '&end=' + this.customEnd + '&platform=all';
+        window.history.pushState({}, '', '/?' + params);
+        htmx.ajax('GET', '/partials/kpi-cards?' + params, {target: '#kpi-cards-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/trend-chart?' + params, {target: '#trend-chart-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/sentiment-insight?' + params, {target: '#sentiment-insight-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/top-posts?' + params, {target: '#top-posts-container', swap: 'innerHTML'});
+    }
+}" style="position:relative;">
+    <div class="btn-group">
+        <button type="button" @click="applyRange('7d')" :class="selectedRange === '7d' ? 'active' : ''" class="btn-filter">7 Hari</button>
+        <button type="button" @click="applyRange('30d')" :class="selectedRange === '30d' ? 'active' : ''" class="btn-filter">30 Hari</button>
+        <button type="button" @click="applyRange('90d')" :class="selectedRange === '90d' ? 'active' : ''" class="btn-filter">90 Hari</button>
+        <button type="button" @click="customOpen = !customOpen" :class="selectedRange === 'custom' ? 'active' : ''" class="btn-filter" style="display:inline-flex;align-items:center;gap:0.35rem;">
+            <span>Kustom</span>
+            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+    </div>
+
+    <!-- Custom date popup -->
+    <div x-show="customOpen" @click.away="customOpen = false" 
+         style="position:absolute;right:0;top:44px;z-index:40;padding:1.25rem;background:#0d121f;border:1px solid #1e293b;border-radius:14px;box-shadow:0 16px 36px rgba(0,0,0,0.7);width:260px;display:flex;flex-direction:column;gap:0.75rem;" 
+         x-transition 
+         x-cloak>
+        <div>
+            <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.25rem;display:block;">Dari Tanggal</label>
+            <input type="date" x-model="customStart" style="font-size:12px;margin:0;">
+        </div>
+        <div>
+            <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.25rem;display:block;">Sampai Tanggal</label>
+            <input type="date" x-model="customEnd" style="font-size:12px;margin:0;">
+        </div>
+        <button type="button" @click="applyCustom()" class="btn-ui btn-ui-primary" style="justify-content:center;width:100%;margin-top:0.25rem;">
+            Terapkan
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- Reauth Warning Banner -->
+    {% if reauth_platforms %}
+    <div style="padding:1rem 1.25rem;border-radius:12px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25);color:#fbbf24;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;font-size:13px;">
+            <svg style="width:20px;height:20px;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path stroke-linecap="round" d="M12 8v4m0 4h.01" />
+            </svg>
+            <span>Akun <strong style="color:#ffffff;">{{ reauth_platforms | join(', ') | capitalize }}</strong> memerlukan otorisasi ulang untuk melanjutkan sinkronisasi data.</span>
+        </div>
+        <a href="/settings/connections" class="btn-ui btn-ui-secondary" style="color:#fbbf24;border-color:rgba(245,158,11,0.4);white-space:nowrap;">
+            Perbarui Otorisasi
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Empty State Prompt if not connected -->
+    {% if not has_connected_accounts %}
+    <article class="dashboard-card" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin:0;">
+        <div>
+            <h3 style="font-size:15px;font-weight:700;color:#ffffff;margin:0;">Belum Ada Akun Terhubung</h3>
+            <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">Hubungkan YouTube, Instagram, atau TikTok untuk mulai memantau analitik performa secara otomatis.</p>
+        </div>
+        <a href="/settings/connections" class="btn-ui btn-ui-primary" style="white-space:nowrap;">
+            Buka Pengaturan Koneksi &rarr;
+        </a>
+    </article>
+    {% endif %}
+
+    <!-- KPI Cards Section (HTMX loaded) -->
+    <div id="kpi-cards-container"
+         hx-get="/partials/kpi-cards?range={{ range or '30d' }}&platform=all{% if start and end %}&start={{ start }}&end={{ end }}{% endif %}"
+         hx-trigger="load, every 300s"
+         hx-swap="innerHTML">
+        <!-- Skeleton loading placeholder -->
+        <div class="kpi-grid kpi-grid-5">
+            <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+            <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+            <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+            <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+            <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+        </div>
+    </div>
+
+    <!-- Trend Chart Section (HTMX loaded) -->
+    <div id="trend-chart-container"
+         hx-get="/partials/trend-chart?range={{ range or '30d' }}&platform=all{% if start and end %}&start={{ start }}&end={{ end }}{% endif %}"
+         hx-trigger="load, every 300s"
+         hx-swap="innerHTML">
+        <div class="dashboard-card" style="height:320px;opacity:0.4;"></div>
+    </div>
+
+    <!-- Social Media Analytic Insight: Tone & Sentimen (HTMX loaded) -->
+    <div id="sentiment-insight-container"
+         hx-get="/partials/sentiment-insight?range={{ range or '30d' }}&platform=all{% if start and end %}&start={{ start }}&end={{ end }}{% endif %}"
+         hx-trigger="load, every 300s"
+         hx-swap="innerHTML">
+        <div class="dashboard-card" style="height:260px;opacity:0.4;"></div>
+    </div>
+
+    <!-- Top Posts Section (Full Width) -->
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Konten Teratas</h3>
+            <span style="font-size:11px;color:#64748b;font-family:var(--font-mono);">Berdasarkan Total Views</span>
+        </div>
+        <div id="top-posts-container"
+             hx-get="/partials/top-posts?range={{ range or '30d' }}&platform=all"
+             hx-trigger="load, every 300s"
+             hx-swap="innerHTML">
+            <div class="dashboard-card" style="height:240px;opacity:0.4;"></div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

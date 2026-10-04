@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Monitoring unmer.ac.id &bull; IMPAKTA RADAR{% endblock %}
+{% block page_title %}Monitoring Portal unmer.ac.id{% endblock %}
+
+{% block filter_controls %}
+<!-- External Link & Manual Sync Action Button -->
+<div style="display:flex;align-items:center;gap:0.5rem;">
+    <a href="https://unmer.ac.id" target="_blank" rel="noopener noreferrer" class="btn-ui btn-ui-secondary" title="Kunjungi Website Resmi">
+        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+        </svg>
+        <span>Buka Web</span>
+    </a>
+    <button type="button" 
+            hx-post="/partials/unmer/sync" 
+            hx-target="#unmer-sync-feedback" 
+            hx-swap="innerHTML" 
+            hx-indicator="#sync-spinner"
+            class="btn-ui btn-ui-primary"
+            title="Tarik konten terbaru dari unmer.ac.id/wp-json">
+        <svg id="sync-spinner" class="htmx-indicator" style="width:14px;height:14px;animation:spin 1s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </svg>
+        <span class="btn-text">Sinkronkan Data</span>
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- Sync Feedback Notification Area -->
+    <div id="unmer-sync-feedback"></div>
+
+    <!-- Summary KPI Cards -->
+    <div id="unmer-summary-cards">
+        <div class="kpi-grid">
+            <!-- 1. Total Posts -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Total Publikasi Tersimpan</span>
+                    <div class="kpi-icon-badge" style="background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_posts }}</span>
+                        <span class="delta-pill delta-neutral">Konten Web</span>
+                    </div>
+                    <p class="kpi-card-caption">Total akumulasi artikel & berita</p>
+                </div>
+            </article>
+
+            <!-- 2. Berita -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Kategori Berita</span>
+                    <div class="kpi-icon-badge" style="background:rgba(14,165,233,0.12);color:#38bdf8;border:1px solid rgba(14,165,233,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_berita }}</span>
+                        <span class="delta-pill delta-positive">Berita Kampus</span>
+                    </div>
+                    <p class="kpi-card-caption">Kategori ID 487 (Portal Resmi)</p>
+                </div>
+            </article>
+
+            <!-- 3. Artikel -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Kategori Artikel</span>
+                    <div class="kpi-icon-badge" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_artikel }}</span>
+                        <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Opini & Gagasan</span>
+                    </div>
+                    <p class="kpi-card-caption">Kategori ID 919 (Portal Resmi)</p>
+                </div>
+            </article>
+
+            <!-- 4. Terakhir Sinkron -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Status Database</span>
+                    <div class="kpi-icon-badge" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular" style="font-size:16px;">{{ summary.last_synced_formatted }}</span>
+                        <span class="delta-pill delta-positive">Tersinkron</span>
+                    </div>
+                    <p class="kpi-card-caption">Tanggal tarik data ke Turso</p>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Posts Monitoring Table Card -->
+    <article class="dashboard-card" style="margin:0;">
+        <div class="card-header-flex">
+            <div>
+                <h3 style="font-size:15px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">
+                    Daftar Postingan Portal unmer.ac.id
+                </h3>
+                <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">
+                    Monitoring publikasi berita dan artikel terverifikasi dari REST API resmi
+                </p>
+            </div>
+
+            <!-- Category Filter Tabs & Search Bar -->
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                <!-- Category Buttons (HTMX) -->
+                <div class="filter-group">
+                    <button type="button" 
+                            hx-get="/partials/unmer/posts?category=all" 
+                            hx-target="#unmer-posts-container" 
+                            hx-include="#unmer-search-input"
+                            onclick="setActiveBtn(this)"
+                            class="btn-filter active">
+                        Semua
+                    </button>
+                    <button type="button" 
+                            hx-get="/partials/unmer/posts?category=berita" 
+                            hx-target="#unmer-posts-container" 
+                            hx-include="#unmer-search-input"
+                            onclick="setActiveBtn(this)"
+                            class="btn-filter">
+                        Berita
+                    </button>
+                    <button type="button" 
+                            hx-get="/partials/unmer/posts?category=artikel" 
+                            hx-target="#unmer-posts-container" 
+                            hx-include="#unmer-search-input"
+                            onclick="setActiveBtn(this)"
+                            class="btn-filter">
+                        Artikel
+                    </button>
+                </div>
+
+                <!-- Live Search Box -->
+                <div style="position:relative;">
+                    <input type="search" 
+                           id="unmer-search-input"
+                           name="search"
+                           placeholder="Cari judul..." 
+                           hx-get="/partials/unmer/posts" 
+                           hx-trigger="keyup changed delay:350ms, search" 
+                           hx-target="#unmer-posts-container"
+                           style="margin:0;padding:0.4rem 0.75rem 0.4rem 2rem;font-size:12px;width:180px;height:34px;background:#0d121f;border:1px solid #1e293b;border-radius:8px;color:#f1f5f9;">
+                    <svg style="position:absolute;left:0.65rem;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#64748b;pointer-events:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div id="unmer-posts-container">
+            {% include "partials/unmer_posts_table.html" %}
+        </div>
+    </article>
+
+</div>
+
+<script>
+function setActiveBtn(btn) {
+    const parent = btn.closest('.filter-group');
+    if (parent) {
+        parent.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+    }
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}
