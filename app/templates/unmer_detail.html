@@ -35,11 +35,11 @@
 
     <!-- Summary KPI Cards -->
     <div id="unmer-summary-cards">
-        <div class="kpi-grid">
+        <div class="kpi-grid kpi-grid-5">
             <!-- 1. Total Posts -->
             <article class="kpi-card">
                 <div class="kpi-card-header">
-                    <span class="kpi-card-title">Total Publikasi Tersimpan</span>
+                    <span class="kpi-card-title">Total Publikasi</span>
                     <div class="kpi-icon-badge" style="background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.25);">
                         <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
                     </div>
@@ -49,11 +49,28 @@
                         <span class="kpi-card-value font-tabular">{{ summary.total_posts }}</span>
                         <span class="delta-pill delta-neutral">Konten Web</span>
                     </div>
-                    <p class="kpi-card-caption">Total akumulasi artikel & berita</p>
+                    <p class="kpi-card-caption">Total akumulasi artikel &amp; berita</p>
                 </div>
             </article>
 
-            <!-- 2. Berita -->
+            <!-- 2. Total Pembaca / Pageviews -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Total Pembaca (Views)</span>
+                    <div class="kpi-icon-badge" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_views_formatted }}</span>
+                        <span class="delta-pill delta-positive">Live Views</span>
+                    </div>
+                    <p class="kpi-card-caption">Akumulasi pembaca portal unmer</p>
+                </div>
+            </article>
+
+            <!-- 3. Berita -->
             <article class="kpi-card">
                 <div class="kpi-card-header">
                     <span class="kpi-card-title">Kategori Berita</span>
@@ -70,7 +87,7 @@
                 </div>
             </article>
 
-            <!-- 3. Artikel -->
+            <!-- 4. Artikel -->
             <article class="kpi-card">
                 <div class="kpi-card-header">
                     <span class="kpi-card-title">Kategori Artikel</span>
@@ -81,16 +98,16 @@
                 <div>
                     <div class="kpi-card-footer">
                         <span class="kpi-card-value font-tabular">{{ summary.total_artikel }}</span>
-                        <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Opini & Gagasan</span>
+                        <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Opini &amp; Gagasan</span>
                     </div>
                     <p class="kpi-card-caption">Kategori ID 919 (Portal Resmi)</p>
                 </div>
             </article>
 
-            <!-- 4. Terakhir Sinkron -->
+            <!-- 5. Terakhir Sinkron -->
             <article class="kpi-card">
                 <div class="kpi-card-header">
-                    <span class="kpi-card-title">Status Database</span>
+                    <span class="kpi-card-title">Status Sinkron</span>
                     <div class="kpi-icon-badge" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">
                         <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
@@ -107,10 +124,10 @@
     </div>
 
     <!-- Posts Monitoring Table Card -->
-    <article class="dashboard-card" style="margin:0;">
-        <div class="card-header-flex">
+    <article class="dashboard-card" style="margin:0;padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1.25rem;border-bottom:1px solid #1e293b;">
             <div>
-                <h3 style="font-size:15px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">
+                <h3 style="font-size:16px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">
                     Daftar Postingan Portal unmer.ac.id
                 </h3>
                 <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">
@@ -120,30 +137,33 @@
 
             <!-- Category Filter Tabs & Search Bar -->
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                <!-- Hidden input for currently active category -->
+                <input type="hidden" id="unmer-active-category" name="category" value="{{ category or 'all' }}">
+
                 <!-- Category Buttons (HTMX) -->
                 <div class="filter-group">
                     <button type="button" 
-                            hx-get="/partials/unmer/posts?category=all" 
+                            hx-get="/partials/unmer/posts?category=all&page=1" 
                             hx-target="#unmer-posts-container" 
-                            hx-include="#unmer-search-input"
-                            onclick="setActiveBtn(this)"
-                            class="btn-filter active">
+                            hx-include="#unmer-search-input, #unmer-start-date, #unmer-end-date, #unmer-sort-select, [name='limit']"
+                            onclick="setActiveBtn(this, 'all')"
+                            class="btn-filter {% if category == 'all' or not category %}active{% endif %}">
                         Semua
                     </button>
                     <button type="button" 
-                            hx-get="/partials/unmer/posts?category=berita" 
+                            hx-get="/partials/unmer/posts?category=berita&page=1" 
                             hx-target="#unmer-posts-container" 
-                            hx-include="#unmer-search-input"
-                            onclick="setActiveBtn(this)"
-                            class="btn-filter">
+                            hx-include="#unmer-search-input, #unmer-start-date, #unmer-end-date, #unmer-sort-select, [name='limit']"
+                            onclick="setActiveBtn(this, 'berita')"
+                            class="btn-filter {% if category == 'berita' %}active{% endif %}">
                         Berita
                     </button>
                     <button type="button" 
-                            hx-get="/partials/unmer/posts?category=artikel" 
+                            hx-get="/partials/unmer/posts?category=artikel&page=1" 
                             hx-target="#unmer-posts-container" 
-                            hx-include="#unmer-search-input"
-                            onclick="setActiveBtn(this)"
-                            class="btn-filter">
+                            hx-include="#unmer-search-input, #unmer-start-date, #unmer-end-date, #unmer-sort-select, [name='limit']"
+                            onclick="setActiveBtn(this, 'artikel')"
+                            class="btn-filter {% if category == 'artikel' %}active{% endif %}">
                         Artikel
                     </button>
                 </div>
@@ -153,10 +173,13 @@
                     <input type="search" 
                            id="unmer-search-input"
                            name="search"
+                           value="{{ search or '' }}"
                            placeholder="Cari judul..." 
                            hx-get="/partials/unmer/posts" 
                            hx-trigger="keyup changed delay:350ms, search" 
                            hx-target="#unmer-posts-container"
+                           hx-include="#unmer-active-category, #unmer-start-date, #unmer-end-date, #unmer-sort-select, [name='limit']"
+                           hx-vals='{"page": 1}'
                            style="margin:0;padding:0.4rem 0.75rem 0.4rem 2rem;font-size:12px;width:180px;height:34px;background:#0d121f;border:1px solid #1e293b;border-radius:8px;color:#f1f5f9;">
                     <svg style="position:absolute;left:0.65rem;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#64748b;pointer-events:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
@@ -174,12 +197,16 @@
 </div>
 
 <script>
-function setActiveBtn(btn) {
+function setActiveBtn(btn, cat) {
     const parent = btn.closest('.filter-group');
     if (parent) {
         parent.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
     }
     btn.classList.add('active');
+    const catInput = document.getElementById('unmer-active-category');
+    if (catInput && cat) {
+        catInput.value = cat;
+    }
 }
 </script>
 {% endblock %}

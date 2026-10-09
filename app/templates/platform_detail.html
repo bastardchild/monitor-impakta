@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}{{ platform_name }} &bull; KPI Sosmed{% endblock %}
-{% block page_title %}{{ platform_name }} KPI Dashboard{% endblock %}
+{% block title %}{{ platform_name }} &bull; Monitor Sosmed{% endblock %}
+{% block page_title %}{{ platform_name }} Monitor Dashboard{% endblock %}
 
 {% block filter_controls %}
 <!-- Filter Periode (HTMX + Alpine) -->
@@ -17,8 +17,13 @@
         window.history.pushState({}, '', url);
         htmx.ajax('GET', '/partials/kpi-cards?range=' + r + '&platform={{ platform_id }}', {target: '#kpi-cards-container', swap: 'innerHTML'});
         htmx.ajax('GET', '/partials/trend-chart?range=' + r + '&platform={{ platform_id }}', {target: '#trend-chart-container', swap: 'innerHTML'});
+        {% if platform_id == 'youtube' %}
+        htmx.ajax('GET', '/partials/top-videos?range=' + r + '&platform={{ platform_id }}', {target: '#top-videos-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/top-posts?range=' + r + '&platform={{ platform_id }}&sort_by=date', {target: '#top-posts-container', swap: 'innerHTML'});
+        {% else %}
         htmx.ajax('GET', '/partials/sentiment-insight?range=' + r + '&platform={{ platform_id }}', {target: '#sentiment-insight-container', swap: 'innerHTML'});
         htmx.ajax('GET', '/partials/top-posts?range=' + r + '&platform={{ platform_id }}', {target: '#top-posts-container', swap: 'innerHTML'});
+        {% endif %}
     },
     applyCustom() {
         if (!this.customStart || !this.customEnd) return;
@@ -28,8 +33,13 @@
         window.history.pushState({}, '', '/platform/{{ platform_id }}?' + params);
         htmx.ajax('GET', '/partials/kpi-cards?' + params, {target: '#kpi-cards-container', swap: 'innerHTML'});
         htmx.ajax('GET', '/partials/trend-chart?' + params, {target: '#trend-chart-container', swap: 'innerHTML'});
+        {% if platform_id == 'youtube' %}
+        htmx.ajax('GET', '/partials/top-videos?' + params, {target: '#top-videos-container', swap: 'innerHTML'});
+        htmx.ajax('GET', '/partials/top-posts?' + params + '&sort_by=date', {target: '#top-posts-container', swap: 'innerHTML'});
+        {% else %}
         htmx.ajax('GET', '/partials/sentiment-insight?' + params, {target: '#sentiment-insight-container', swap: 'innerHTML'});
         htmx.ajax('GET', '/partials/top-posts?' + params, {target: '#top-posts-container', swap: 'innerHTML'});
+        {% endif %}
     }
 }" style="position:relative;">
     <div class="btn-group">
@@ -110,7 +120,13 @@
                     </span>
                     {% endif %}
                 </div>
-                <p style="font-size:11px;color:#94a3b8;margin:0.2rem 0 0;font-family:var(--font-mono);">{{ account.handle if account and account.handle else '@' + platform_id }}</p>
+                <p style="font-size:11px;color:#94a3b8;margin:0.2rem 0 0;font-family:var(--font-mono);">
+                    {% if account and account.status == 'connected' and account.handle %}
+                        {{ account.handle }}
+                    {% else %}
+                        @{{ platform_id }}
+                    {% endif %}
+                </p>
             </div>
         </div>
 
@@ -144,12 +160,14 @@
          hx-get="/partials/kpi-cards?range={{ range or '30d' }}&platform={{ platform_id }}"
          hx-trigger="load, every 300s"
          hx-swap="innerHTML">
-        <div class="kpi-grid kpi-grid-5">
+        <div class="kpi-grid {% if platform_id == 'youtube' %}kpi-grid-4{% else %}kpi-grid-5{% endif %}">
             <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
             <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
             <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
             <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+            {% if platform_id != 'youtube' %}
             <div class="kpi-card" style="height:120px;opacity:0.4;"></div>
+            {% endif %}
         </div>
     </div>
 
@@ -161,22 +179,32 @@
         <div class="dashboard-card" style="height:320px;opacity:0.4;"></div>
     </div>
 
-    <!-- Social Media Analytic Insight: Tone & Sentimen (HTMX loaded) -->
-    <div id="sentiment-insight-container"
-         hx-get="/partials/sentiment-insight?range={{ range or '30d' }}&platform={{ platform_id }}"
+    {% if platform_id == 'youtube' %}
+    <!-- 4 Video YouTube Terpopuler (View Terbanyak) -->
+    <div id="top-videos-container"
+         hx-get="/partials/top-videos?range={{ range or '30d' }}&platform={{ platform_id }}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}"
          hx-trigger="load, every 300s"
          hx-swap="innerHTML">
         <div class="dashboard-card" style="height:260px;opacity:0.4;"></div>
     </div>
+    {% else %}
+    <!-- Social Media Analytic Insight: Tone & Sentimen (HTMX loaded) -->
+    <div id="sentiment-insight-container"
+         hx-get="/partials/sentiment-insight?range={{ range or '30d' }}&platform={{ platform_id }}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}"
+         hx-trigger="load, every 300s"
+         hx-swap="innerHTML">
+        <div class="dashboard-card" style="height:260px;opacity:0.4;"></div>
+    </div>
+    {% endif %}
 
     <!-- Top Posts Section -->
     <div style="display:flex;flex-direction:column;gap:0.75rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-            <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Konten Terpopuler {{ platform_name }}</h3>
-            <span style="font-size:11px;color:#64748b;font-family:var(--font-mono);">Diurutkan berdasarkan Views</span>
+            <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Daftar Konten {{ platform_name }}</h3>
+            <span style="font-size:11px;color:#64748b;font-family:var(--font-mono);">Filter &amp; Penelusuran Publikasi</span>
         </div>
         <div id="top-posts-container"
-             hx-get="/partials/top-posts?range={{ range or '30d' }}&platform={{ platform_id }}"
+             hx-get="/partials/top-posts?range={{ range or '30d' }}&platform={{ platform_id }}{% if platform_id == 'youtube' %}&sort_by=stream_date{% endif %}{% if start %}&start={{ start }}{% endif %}{% if end %}&end={{ end }}{% endif %}"
              hx-trigger="load, every 300s"
              hx-swap="innerHTML">
             <div class="dashboard-card" style="height:240px;opacity:0.4;"></div>

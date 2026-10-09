@@ -1,5 +1,5 @@
 {
-  "name": "TikTok KPI Sync",
+  "name": "TikTok Monitor Sync",
   "nodes": [
     {
       "parameters": {
@@ -21,21 +21,22 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "webhook/sync-tiktok",
+        "path": "sync-tiktok",
         "options": {}
       },
       "id": "tt-webhook-trigger",
       "name": "Webhook Trigger (Sync Sekarang)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [100, 400]
+      "position": [100, 400],
+      "webhookId": "tt-webhook-trigger"
     },
     {
       "parameters": {
         "conditions": {
           "string": [
             {
-              "value1": "={{ $headers['x-webhook-secret'] || $json.body?.secret || '' }}",
+              "value1": "={{ $json.headers?.['x-webhook-secret'] || $json.body?.secret || '' }}",
               "value2": "={{ $env.N8N_WEBHOOK_SECRET || '' }}"
             }
           ]
@@ -103,7 +104,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://open.tiktokapis.com/v2/video/list/",
+        "url": "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,duration,cover_image_url,share_url,create_time,view_count,like_count,comment_count,share_count",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -136,7 +137,7 @@
       "name": "Normalisasi Data TikTok",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1050, 300]
+      "position": [1050, 200]
     },
     {
       "parameters": {
@@ -164,7 +165,73 @@
       "name": "Ingest ke Turso / App",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 300]
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const videoListResp = $('Fetch TikTok Video List').first().json;\nconst data = videoListResp.data || {};\nconst videos = data.videos || [];\nconst today = new Date().toISOString().split('T')[0];\n\nconst posts = [];\nconst metrics = [];\n\nfor (const v of videos) {\n  const vid = v.id;\n  const title = (v.title || v.video_description || '').substring(0, 150) || 'TikTok Video';\n  const thumbUrl = v.cover_image_url || '';\n  const permalink = v.share_url || ('https://www.tiktok.com/@user/video/' + vid);\n  const pubDate = v.create_time ? new Date(v.create_time * 1000).toISOString() : null;\n  const views = parseInt(v.view_count || 0);\n  const likes = parseInt(v.like_count || 0);\n  const comments = parseInt(v.comment_count || 0);\n  const shares = parseInt(v.share_count || 0);\n\n  posts.push({\n    platform_id: 'tiktok',\n    external_id: vid,\n    title: title,\n    url: permalink,\n    thumbnail_url: thumbUrl,\n    post_type: 'video',\n    published_at: pubDate\n  });\n\n  metrics.push({\n    external_id: vid,\n    date: today,\n    views: views,\n    likes: likes,\n    comments: comments,\n    shares: shares,\n    saves: 0,\n    avg_watch_sec: 0.0\n  });\n}\n\nreturn [{ json: { posts, metrics } }];"
+      },
+      "id": "tt-normalize-videos",
+      "name": "Normalisasi TikTok Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ posts: $json.posts }) }}",
+        "options": {}
+      },
+      "id": "tt-ingest-posts",
+      "name": "Ingest TikTok Posts ke App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/post-metrics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ metrics: $('Normalisasi TikTok Videos').first().json.metrics }) }}",
+        "options": {}
+      },
+      "id": "tt-ingest-post-metrics",
+      "name": "Ingest TikTok Post Metrics ke App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 480]
     }
   ],
   "connections": {
@@ -233,6 +300,33 @@
         [
           {
             "node": "Ingest ke Turso / App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch TikTok Video List": {
+      "main": [
+        [
+          {
+            "node": "Normalisasi TikTok Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisasi TikTok Videos": {
+      "main": [
+        [
+          {
+            "node": "Ingest TikTok Posts ke App",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ingest TikTok Post Metrics ke App",
             "type": "main",
             "index": 0
           }

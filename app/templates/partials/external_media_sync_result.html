@@ -1,0 +1,93 @@
+<div style="margin-bottom:1rem;padding:0.75rem 1rem;border-radius:10px;background:{% if feedback_type == 'danger' %}rgba(239,68,68,0.12){% elif feedback_type == 'warning' %}rgba(245,158,11,0.12){% else %}rgba(59,130,246,0.12){% endif %};border:1px solid {% if feedback_type == 'danger' %}rgba(239,68,68,0.25){% elif feedback_type == 'warning' %}rgba(245,158,11,0.25){% else %}rgba(59,130,246,0.25){% endif %};color:{% if feedback_type == 'danger' %}#f87171{% elif feedback_type == 'warning' %}#fbbf24{% else %}#60a5fa{% endif %};font-size:12px;display:flex;align-items:center;justify-content:space-between;" x-data="{ show: true }" x-show="show">
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+        <svg style="width:16px;height:16px;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>
+            {% if feedback_message %}
+                {{ feedback_message }}
+            {% elif sync_result %}
+                Sinkronisasi Media Eksternal selesai! Berhasil memperbarui total <strong>{{ sync_result.total_upserted }}</strong> liputan berita dari <strong>TIMES Indonesia</strong> &amp; <strong>Radar Malang</strong>.
+            {% else %}
+                Data media eksternal berhasil diperbarui.
+            {% endif %}
+        </span>
+    </div>
+    <button type="button" @click="show = false" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;">
+        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+</div>
+
+<!-- Auto-refresh posts table container via OOB -->
+<div id="external-media-posts-container" hx-swap-oob="true">
+    {% include "partials/external_media_table.html" %}
+</div>
+
+<!-- Auto-refresh stat cards via OOB -->
+<div id="ext-summary-cards" hx-swap-oob="true">
+    <div class="kpi-grid">
+        <article class="kpi-card">
+            <div class="kpi-card-header">
+                <span class="kpi-card-title">Total Liputan Eksternal</span>
+                <div class="kpi-icon-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+                </div>
+            </div>
+            <div>
+                <div class="kpi-card-footer">
+                    <span class="kpi-card-value font-tabular">{{ summary.total_posts }}</span>
+                    <span class="delta-pill delta-positive">Berita Terbit</span>
+                </div>
+                <p class="kpi-card-caption">Liputan media massa tentang UNMER</p>
+            </div>
+        </article>
+
+        <article class="kpi-card">
+            <div class="kpi-card-header">
+                <span class="kpi-card-title">Total Pembaca (Pageviews)</span>
+                <div class="kpi-icon-badge" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+            </div>
+            <div>
+                <div class="kpi-card-footer">
+                    <span class="kpi-card-value font-tabular">{{ summary.total_views_formatted }}</span>
+                    <span class="delta-pill delta-neutral">Akumulasi Views</span>
+                </div>
+                <p class="kpi-card-caption">Total interaksi pembaca publik</p>
+            </div>
+        </article>
+
+        <article class="kpi-card">
+            <div class="kpi-card-header">
+                <span class="kpi-card-title">Kanal Media Massa</span>
+                <div class="kpi-icon-badge" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
+                </div>
+            </div>
+            <div>
+                <div class="kpi-card-footer">
+                    <span class="kpi-card-value font-tabular">{{ summary.total_sources }} Kanal</span>
+                    <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Multi-Source</span>
+                </div>
+                <p class="kpi-card-caption">TIMES Indonesia &amp; Media Luar</p>
+            </div>
+        </article>
+
+        <article class="kpi-card">
+            <div class="kpi-card-header">
+                <span class="kpi-card-title">Status Database</span>
+                <div class="kpi-icon-badge" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+            </div>
+            <div>
+                <div class="kpi-card-footer">
+                    <span class="kpi-card-value font-tabular" style="font-size:16px;">{{ summary.last_synced_formatted }}</span>
+                    <span class="delta-pill delta-positive">Tersinkron</span>
+                </div>
+                <p class="kpi-card-caption">Pembaruan API terakhir</p>
+            </div>
+        </article>
+    </div>
+</div>

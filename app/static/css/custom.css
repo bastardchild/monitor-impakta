@@ -302,6 +302,12 @@ nav.sidebar-nav,
     margin-bottom: 1.5rem;
 }
 
+@media (min-width: 1024px) {
+    .kpi-grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
 @media (min-width: 1280px) {
     .kpi-grid-5 {
         grid-template-columns: repeat(5, 1fr);

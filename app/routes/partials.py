@@ -14,6 +14,7 @@ from app.services.kpi_service import (
     get_kpi_targets_progress,
     get_sentiment_summary,
     get_top_posts,
+    get_top_youtube_videos,
     get_trend_chart_data,
 )
 from app.services.error_logger import get_recent_error_logs
@@ -178,19 +179,84 @@ async def partial_trend_chart(
     )
 
 
+@router.get("/top-videos", response_class=HTMLResponse)
+async def partial_top_videos(
+    request: Request,
+    range: str = "30d",
+    platform: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    _: None = Depends(require_auth)
+):
+    videos = await get_top_youtube_videos(
+        range_key=range,
+        limit=4,
+        start_custom=start,
+        end_custom=end
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/top_videos.html",
+        {
+            "videos": videos,
+            "range": range,
+            "start": start,
+            "end": end,
+            "platform": platform or "youtube"
+        }
+    )
+
+
 @router.get("/top-posts", response_class=HTMLResponse)
 async def partial_top_posts(
     request: Request,
     range: str = "30d",
     platform: Optional[str] = None,
+    limit: int = 20,
+    page: int = 1,
+    sort_by: Optional[str] = None,
+    privacy: Optional[str] = None,
+    q: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
     _: None = Depends(require_auth)
 ):
     plat_filter = platform if (platform and platform != "all") else None
-    posts = await get_top_posts(range_key=range, platform_id=plat_filter, limit=6)
+    effective_sort = sort_by or ("stream_date" if plat_filter == "youtube" else "views")
+    data = await get_top_posts(
+        range_key=range,
+        platform_id=plat_filter,
+        limit=limit,
+        page=page,
+        sort_by=effective_sort,
+        privacy=privacy,
+        search=q,
+        start_custom=start,
+        end_custom=end
+    )
     return templates.TemplateResponse(
         request,
         "partials/top_posts.html",
-        {"posts": posts, "platform": platform or "all"}
+        {
+            "posts": data["posts"],
+            "total_count": data["total_count"],
+            "page": data["page"],
+            "limit": data["limit"],
+            "total_pages": data["total_pages"],
+            "has_prev": data["has_prev"],
+            "has_next": data["has_next"],
+            "prev_page": data["prev_page"],
+            "next_page": data["next_page"],
+            "sort_by": data["sort_by"],
+            "privacy": data["privacy"],
+            "q": data["search"],
+            "start_idx": data["start_idx"],
+            "end_idx": data["end_idx"],
+            "range": range,
+            "platform": platform or "all",
+            "start": start or "",
+            "end": end or ""
+        }
     )
 
 
@@ -255,23 +321,27 @@ async def partial_unmer_posts(
     request: Request,
     category: Optional[str] = "all",
     search: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 20,
+    page: int = 1,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    sort_by: str = "date",
     _: None = Depends(require_auth)
 ):
     from app.services.unmer_service import get_unmer_posts
-    posts = await get_unmer_posts(
+    data = await get_unmer_posts(
         category=category if category != "all" else None,
         search=search,
-        limit=limit
+        limit=limit,
+        page=page,
+        start_date=start_date,
+        end_date=end_date,
+        sort_by=sort_by
     )
     return templates.TemplateResponse(
         request,
         "partials/unmer_posts_table.html",
-        {
-            "posts": posts,
-            "active_category": category or "all",
-            "search_query": search or "",
-        }
+        data
     )
 
 
@@ -281,17 +351,134 @@ async def partial_unmer_sync(
     _: None = Depends(require_auth)
 ):
     from app.services.unmer_service import sync_unmer_posts, get_unmer_summary, get_unmer_posts
-    sync_result = await sync_unmer_posts(max_pages=2, per_page=50)
+    sync_result = await sync_unmer_posts()
     summary = await get_unmer_summary()
-    posts = await get_unmer_posts(limit=50)
+    post_data = await get_unmer_posts(limit=20, page=1)
     return templates.TemplateResponse(
         request,
         "partials/unmer_sync_result.html",
         {
             "sync_result": sync_result,
             "summary": summary,
-            "posts": posts,
+            **post_data
         }
     )
+
+
+@router.get("/external-media/posts", response_class=HTMLResponse)
+async def partial_external_media_posts(
+    request: Request,
+    source_id: Optional[str] = "all",
+    category: Optional[str] = "all",
+    search: Optional[str] = None,
+    limit: int = 20,
+    page: int = 1,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    month_filter: Optional[str] = None,
+    sort_by: str = "date",
+    _: None = Depends(require_auth)
+):
+    from app.services.external_media_service import get_external_news_posts
+    data = await get_external_news_posts(
+        source_id=source_id,
+        category=category,
+        search=search,
+        limit=limit,
+        page=page,
+        start_date=start_date,
+        end_date=end_date,
+        month_filter=month_filter,
+        sort_by=sort_by
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/external_media_table.html",
+        data
+    )
+
+
+@router.post("/external-media/sync", response_class=HTMLResponse)
+async def partial_external_media_sync(
+    request: Request,
+    _: None = Depends(require_auth)
+):
+    from app.services.external_media_service import sync_all_external_media, get_external_media_summary, get_external_news_posts
+    sync_result = await sync_all_external_media(after_date="2025-01-01")
+    summary = await get_external_media_summary()
+    post_data = await get_external_news_posts(limit=20, page=1)
+    return templates.TemplateResponse(
+        request,
+        "partials/external_media_sync_result.html",
+        {
+            "sync_result": sync_result,
+            "summary": summary,
+            **post_data
+        }
+    )
+
+
+@router.post("/external-media/create", response_class=HTMLResponse)
+async def partial_external_media_create(
+    request: Request,
+    _: None = Depends(require_auth)
+):
+    from app.services.external_media_service import create_manual_external_post, get_external_media_summary, get_external_news_posts
+    form_data = await request.form()
+    await create_manual_external_post(dict(form_data))
+    summary = await get_external_media_summary()
+    post_data = await get_external_news_posts(limit=20, page=1)
+    return templates.TemplateResponse(
+        request,
+        "partials/external_media_sync_result.html",
+        {
+            "feedback_message": f"Berita manual berhasil ditambahkan: \"{form_data.get('title', '')}\"",
+            "feedback_type": "success",
+            "summary": summary,
+            **post_data
+        }
+    )
+
+
+@router.delete("/external-media/posts/{post_id}", response_class=HTMLResponse)
+async def partial_external_media_delete(
+    request: Request,
+    post_id: str,
+    source_id: Optional[str] = "all",
+    category: Optional[str] = "all",
+    search: Optional[str] = None,
+    limit: int = 20,
+    page: int = 1,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    month_filter: Optional[str] = None,
+    sort_by: str = "date",
+    _: None = Depends(require_auth)
+):
+    from app.services.external_media_service import delete_external_post, get_external_media_summary, get_external_news_posts
+    await delete_external_post(post_id)
+    summary = await get_external_media_summary()
+    post_data = await get_external_news_posts(
+        source_id=source_id,
+        category=category,
+        search=search,
+        limit=limit,
+        page=page,
+        start_date=start_date,
+        end_date=end_date,
+        month_filter=month_filter,
+        sort_by=sort_by
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/external_media_sync_result.html",
+        {
+            "feedback_message": "Berita berhasil dihapus dari pemantauan media eksternal.",
+            "feedback_type": "warning",
+            "summary": summary,
+            **post_data
+        }
+    )
+
 
 

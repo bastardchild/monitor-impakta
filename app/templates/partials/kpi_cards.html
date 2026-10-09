@@ -1,4 +1,4 @@
-<div class="kpi-grid kpi-grid-5">
+<div class="kpi-grid {% if platform == 'youtube' %}kpi-grid-4{% else %}kpi-grid-5{% endif %}">
     
     <!-- 1. Followers / Subscribers -->
     <article class="kpi-card">
@@ -77,6 +77,7 @@
         </div>
     </article>
 
+    {% if platform != 'youtube' %}
     <!-- 4. Tingkat Interaksi (Engagement Rate: Views, Likes, Tag/Simpan, Share) -->
     <article class="kpi-card">
         <div class="kpi-card-header">
@@ -111,6 +112,7 @@
             </div>
         </div>
     </article>
+    {% endif %}
 
     <!-- 5. Jumlah Posting & Frekuensi / Watch Time -->
     <article class="kpi-card">
@@ -128,9 +130,11 @@
                 <span class="kpi-card-value font-tabular">
                     {{ kpi.total_watch_time_hours }} <span style="font-size:13px;font-weight:400;color:#94a3b8;">Jam</span>
                 </span>
-                <span class="delta-pill delta-neutral">{{ kpi.post_count }} video</span>
+                <span class="delta-pill delta-neutral">
+                    {% if kpi.post_count > 0 %}+{{ kpi.post_count }} Rilis Baru{% else %}0 Rilis Baru{% endif %}
+                </span>
             </div>
-            <p class="kpi-card-caption">Estimasi durasi tonton akumulatif</p>
+            <p class="kpi-card-caption">Total waktu pemirsa menyaksikan siaran pada periode ini</p>
         </div>
         {% else %}
         <div class="kpi-card-header">

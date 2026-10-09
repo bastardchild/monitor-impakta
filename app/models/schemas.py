@@ -26,6 +26,8 @@ class PostItem(BaseModel):
     thumbnail_url: str = ""
     post_type: str = "video"
     published_at: Optional[str] = None
+    streamed_at: Optional[str] = None
+    privacy_status: Optional[str] = "public"
 
 
 class PostsIngest(BaseModel):

@@ -1,5 +1,5 @@
 {
-  "name": "Instagram KPI Sync",
+  "name": "Instagram Monitor Sync",
   "nodes": [
     {
       "parameters": {
@@ -21,21 +21,22 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "webhook/sync-instagram",
+        "path": "sync-instagram",
         "options": {}
       },
       "id": "ig-webhook-trigger",
       "name": "Webhook Trigger (Sync Sekarang)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [100, 400]
+      "position": [100, 400],
+      "webhookId": "ig-webhook-trigger"
     },
     {
       "parameters": {
         "conditions": {
           "string": [
             {
-              "value1": "={{ $headers['x-webhook-secret'] || $json.body?.secret || '' }}",
+              "value1": "={{ $json.headers?.['x-webhook-secret'] || $json.body?.secret || '' }}",
               "value2": "={{ $env.N8N_WEBHOOK_SECRET || '' }}"
             }
           ]
@@ -129,13 +130,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const profile = $('Fetch Profile Instagram').first().json;\nconst today = new Date().toISOString().split('T')[0];\n\nconst metrics = [{\n  platform_id: 'instagram',\n  date: today,\n  followers: parseInt(profile.followers_count || 0),\n  views: 0,\n  reach: 0,\n  impressions: 0,\n  watch_time_sec: 0,\n  engagement_count: 0\n}];\n\nreturn [{ json: { metrics } }];"
+        "jsCode": "const profile = $('Fetch Profile Instagram').first().json;\nconst insights = $('Fetch Insights Akun').first().json;\nlet reach = 0;\nif (insights && insights.data) {\n  const rItem = insights.data.find(d => d.name === 'reach');\n  if (rItem && rItem.values && rItem.values[0]) reach = parseInt(rItem.values[0].value || 0);\n}\nconst today = new Date().toISOString().split('T')[0];\n\nconst metrics = [{\n  platform_id: 'instagram',\n  date: today,\n  followers: parseInt(profile.followers_count || 0),\n  views: reach,\n  reach: reach,\n  impressions: reach,\n  watch_time_sec: 0,\n  engagement_count: 0\n}];\n\nreturn [{ json: { metrics } }];"
       },
       "id": "ig-normalize",
       "name": "Normalisasi Data Instagram",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1050, 300]
+      "position": [1050, 200]
     },
     {
       "parameters": {
@@ -163,7 +164,106 @@
       "name": "Ingest ke Turso / App",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 300]
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Ambil Token Instagram dari App').item.json.account_id }}/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token Instagram dari App').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count"
+            },
+            {
+              "name": "limit",
+              "value": "25"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ig-fetch-media",
+      "name": "Fetch Instagram Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "const mediaData = $('Fetch Instagram Media').first().json;\nconst items = (mediaData && mediaData.data) || [];\nconst today = new Date().toISOString().split('T')[0];\n\nconst posts = [];\nconst metrics = [];\n\nfor (const m of items) {\n  const mid = m.id;\n  const thumbUrl = m.thumbnail_url || m.media_url || '';\n  const caption = (m.caption || '').split('\\n')[0].substring(0, 150) || 'Instagram Post';\n  const postType = (m.media_type || 'image').toLowerCase();\n  const likes = parseInt(m.like_count || 0);\n  const comments = parseInt(m.comments_count || 0);\n\n  posts.push({\n    platform_id: 'instagram',\n    external_id: mid,\n    title: caption,\n    url: m.permalink || '',\n    thumbnail_url: thumbUrl,\n    post_type: postType,\n    published_at: m.timestamp || null\n  });\n\n  metrics.push({\n    external_id: mid,\n    date: today,\n    views: likes + comments,\n    likes: likes,\n    comments: comments,\n    shares: 0,\n    saves: 0,\n    avg_watch_sec: 0.0\n  });\n}\n\nreturn [{ json: { posts, metrics } }];"
+      },
+      "id": "ig-normalize-media",
+      "name": "Normalisasi Instagram Media",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ posts: $json.posts }) }}",
+        "options": {}
+      },
+      "id": "ig-ingest-posts",
+      "name": "Ingest Instagram Posts ke App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/post-metrics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ metrics: $('Normalisasi Instagram Media').first().json.metrics }) }}",
+        "options": {}
+      },
+      "id": "ig-ingest-post-metrics",
+      "name": "Ingest Instagram Post Metrics ke App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 460]
     }
   ],
   "connections": {
@@ -212,6 +312,11 @@
             "node": "Fetch Insights Akun",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Fetch Instagram Media",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -232,6 +337,33 @@
         [
           {
             "node": "Ingest ke Turso / App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Instagram Media": {
+      "main": [
+        [
+          {
+            "node": "Normalisasi Instagram Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisasi Instagram Media": {
+      "main": [
+        [
+          {
+            "node": "Ingest Instagram Posts ke App",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ingest Instagram Post Metrics ke App",
             "type": "main",
             "index": 0
           }

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Ringkasan Metrik &bull; KPI Sosmed{% endblock %}
+{% block title %}Ringkasan Metrik &bull; Monitor Sosmed{% endblock %}
 {% block page_title %}Ringkasan Multi-Platform{% endblock %}
 
 {% block filter_controls %}
@@ -128,8 +128,8 @@
     <!-- Top Posts Section (Full Width) -->
     <div style="display:flex;flex-direction:column;gap:0.75rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-            <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Konten Teratas</h3>
-            <span style="font-size:11px;color:#64748b;font-family:var(--font-mono);">Berdasarkan Total Views</span>
+            <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Daftar Konten Multi-Platform</h3>
+            <span style="font-size:11px;color:#64748b;font-family:var(--font-mono);">Filter &amp; Penelusuran Publikasi</span>
         </div>
         <div id="top-posts-container"
              hx-get="/partials/top-posts?range={{ range or '30d' }}&platform=all"

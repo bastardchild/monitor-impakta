@@ -211,8 +211,8 @@ async def get_valid_credentials(platform: str) -> Dict[str, Any]:
     }
 
 
-async def disconnect_account(platform: str) -> None:
-    """Disconnect account: revoke token on platform (best effort) and update status in database."""
+async def disconnect_account(platform: str, delete_data: bool = False) -> None:
+    """Disconnect account: revoke token on platform (best effort) and update status/delete data in database."""
     account = await fetch_one("SELECT * FROM connected_accounts WHERE platform_id = ?", [platform])
     if account and account["access_token_enc"]:
         try:
@@ -224,15 +224,57 @@ async def disconnect_account(platform: str) -> None:
             logger.warning(f"Error during revoke for {platform}: {e}")
 
     now_ts = int(time.time())
-    await execute(
-        """
-        UPDATE connected_accounts SET
-            access_token_enc = NULL,
-            refresh_token_enc = NULL,
-            status = 'disconnected',
-            updated_at = ?
-        WHERE platform_id = ?
-        """,
-        [now_ts, platform]
-    )
-    logger.info(f"Platform '{platform}' disconnected.")
+
+    if delete_data:
+        # Hapus data posts & metrik yang berkaitan dengan platform ini
+        await execute(
+            """
+            DELETE FROM post_daily_metrics 
+            WHERE post_id IN (SELECT id FROM posts WHERE platform_id = ?)
+            """,
+            [platform]
+        )
+        await execute("DELETE FROM posts WHERE platform_id = ?", [platform])
+        await execute("DELETE FROM account_daily_metrics WHERE platform_id = ?", [platform])
+        await execute("DELETE FROM sentiment_daily_metrics WHERE platform_id = ?", [platform])
+        await execute("DELETE FROM kpi_targets WHERE platform_id = ?", [platform])
+        
+        # Bersihkan info connected_accounts secara tuntas
+        await execute(
+            """
+            UPDATE connected_accounts SET
+                access_token_enc = NULL,
+                refresh_token_enc = NULL,
+                token_type = NULL,
+                scopes = NULL,
+                expires_at = NULL,
+                refresh_expires_at = NULL,
+                external_account_id = NULL,
+                display_name = NULL,
+                avatar_url = NULL,
+                status = 'disconnected',
+                last_refresh_at = NULL,
+                last_error = NULL,
+                connected_at = NULL,
+                updated_at = ?
+            WHERE platform_id = ?
+            """,
+            [now_ts, platform]
+        )
+        # Bersihkan juga handle & account_id pada tabel platforms
+        await execute("UPDATE platforms SET handle = '', account_id = '' WHERE id = ?", [platform])
+        logger.info(f"Platform '{platform}' disconnected and all associated user data deleted.")
+    else:
+        # Hanya putuskan koneksi dan hapus token, data historis tetap disimpan
+        await execute(
+            """
+            UPDATE connected_accounts SET
+                access_token_enc = NULL,
+                refresh_token_enc = NULL,
+                status = 'disconnected',
+                updated_at = ?
+            WHERE platform_id = ?
+            """,
+            [now_ts, platform]
+        )
+        logger.info(f"Platform '{platform}' disconnected (tokens cleared).")

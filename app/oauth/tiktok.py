@@ -13,6 +13,7 @@ class TikTokOAuthProvider(OAuthProvider):
     
     SCOPES = [
         "user.info.basic",
+        "user.info.profile",
         "user.info.stats",
         "video.list",
     ]
@@ -106,19 +107,33 @@ class TikTokOAuthProvider(OAuthProvider):
 
     async def fetch_account_info(self, access_token: str) -> Dict[str, Any]:
         headers = {"Authorization": f"Bearer {access_token}"}
+        # Coba minta fields lengkap: open_id, union_id, avatar_url, display_name, username
         params = {"fields": "open_id,display_name,username,avatar_url"}
         async with httpx.AsyncClient() as client:
             resp = await client.get(self.USER_INFO_ENDPOINT, headers=headers, params=params, timeout=15.0)
-            resp.raise_for_status()
+            
+            # Jika 401/400 kemungkinan karena scope user.info.profile belum disetujui, coba fallback hanya basic fields
+            if resp.status_code in (400, 401, 403):
+                fallback_params = {"fields": "open_id,avatar_url"}
+                resp_fallback = await client.get(self.USER_INFO_ENDPOINT, headers=headers, params=fallback_params, timeout=15.0)
+                if resp_fallback.status_code == 200:
+                    resp = resp_fallback
+                else:
+                    # Log detail error body dari TikTok
+                    err_body = resp.text
+                    raise ValueError(f"TikTok user info API rejected ({resp.status_code}): {err_body}")
+            else:
+                resp.raise_for_status()
+                
             res_json = resp.json()
 
         user_data = res_json.get("data", {}).get("user", res_json.get("user", {}))
         if not user_data:
-            raise ValueError("Unable to retrieve TikTok user profile.")
+            raise ValueError(f"Unable to retrieve TikTok user profile from response: {res_json}")
 
         open_id = user_data.get("open_id", "")
         username = user_data.get("username", "")
-        display_name = user_data.get("display_name", username)
+        display_name = user_data.get("display_name", username or "Akun TikTok")
         avatar_url = user_data.get("avatar_url", "")
 
         return {

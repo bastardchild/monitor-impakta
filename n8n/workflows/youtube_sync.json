@@ -21,21 +21,22 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "webhook/sync-youtube",
+        "path": "sync-youtube",
         "options": {}
       },
       "id": "yt-webhook-trigger",
       "name": "Webhook Trigger (Sync Sekarang)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [100, 400]
+      "position": [100, 400],
+      "webhookId": "yt-webhook-trigger"
     },
     {
       "parameters": {
         "conditions": {
           "string": [
             {
-              "value1": "={{ $headers['x-webhook-secret'] || $json.body?.secret || '' }}",
+              "value1": "={{ $json.headers?.['x-webhook-secret'] || $json.body?.secret || '' }}",
               "value2": "={{ $env.N8N_WEBHOOK_SECRET || '' }}"
             }
           ]
@@ -73,7 +74,7 @@
     },
     {
       "parameters": {
-        "url": "https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true",
+        "url": "https://www.googleapis.com/youtube/v3/channels?part=statistics,contentDetails&mine=true",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -129,7 +130,7 @@
       "name": "Normalisasi Data YouTube",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1050, 300]
+      "position": [1050, 200]
     },
     {
       "parameters": {
@@ -157,7 +158,113 @@
       "name": "Ingest ke Turso / App",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 300]
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId={{ $('Fetch Channel Statistics').first().json.items[0].contentDetails.relatedPlaylists.uploads }}&maxResults=20",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token YouTube dari App').item.json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "yt-fetch-playlist-items",
+      "name": "Fetch Uploaded Videos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 360]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status,liveStreamingDetails&id={{ $('Fetch Uploaded Videos').first().json.items.map(i => i.contentDetails.videoId).join(',') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Ambil Token YouTube dari App').item.json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "yt-fetch-video-stats",
+      "name": "Fetch Video Statistics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const videoData = $('Fetch Video Statistics').first().json;\nconst items = (videoData && videoData.items) || [];\nconst today = new Date().toISOString().split('T')[0];\n\nconst posts = [];\nconst metrics = [];\n\nfor (const v of items) {\n  const vid = v.id;\n  const snip = v.snippet || {};\n  const stat = v.statistics || {};\n  const st = v.status || {};\n  const ls = v.liveStreamingDetails || null;\n  const thumbs = snip.thumbnails || {};\n  const thumbUrl = (thumbs.high && thumbs.high.url) || (thumbs.medium && thumbs.medium.url) || (thumbs.default && thumbs.default.url) || '';\n  const streamedAt = ls ? (ls.actualStartTime || ls.scheduledStartTime || null) : null;\n  const privacyStatus = st.privacyStatus || 'public';\n\n  posts.push({\n    platform_id: 'youtube',\n    external_id: vid,\n    title: snip.title || '',\n    url: 'https://www.youtube.com/watch?v=' + vid,\n    thumbnail_url: thumbUrl,\n    post_type: 'video',\n    published_at: snip.publishedAt || null,\n    streamed_at: streamedAt,\n    privacy_status: privacyStatus\n  });\n\n  metrics.push({\n    external_id: vid,\n    date: today,\n    views: parseInt(stat.viewCount || 0),\n    likes: parseInt(stat.likeCount || 0),\n    comments: parseInt(stat.commentCount || 0),\n    shares: 0,\n    saves: 0,\n    avg_watch_sec: 0.0\n  });\n}\n\nreturn [{ json: { posts, metrics } }];"
+      },
+      "id": "yt-normalize-videos",
+      "name": "Normalisasi Video Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ posts: $json.posts }) }}",
+        "options": {}
+      },
+      "id": "yt-ingest-posts",
+      "name": "Ingest Posts ke App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:8000/api/ingest/post-metrics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ metrics: $('Normalisasi Video Posts').first().json.metrics }) }}",
+        "options": {}
+      },
+      "id": "yt-ingest-post-metrics",
+      "name": "Ingest Post Metrics ke App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1720, 450]
     }
   ],
   "connections": {
@@ -217,6 +324,11 @@
             "node": "Normalisasi Data YouTube",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Fetch Uploaded Videos",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -226,6 +338,44 @@
         [
           {
             "node": "Ingest ke Turso / App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Uploaded Videos": {
+      "main": [
+        [
+          {
+            "node": "Fetch Video Statistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Video Statistics": {
+      "main": [
+        [
+          {
+            "node": "Normalisasi Video Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisasi Video Posts": {
+      "main": [
+        [
+          {
+            "node": "Ingest Posts ke App",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ingest Post Metrics ke App",
             "type": "main",
             "index": 0
           }

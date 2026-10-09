@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}Media Eksternal &bull; Liputan UNMER Malang &bull; IMPAKTA RADAR{% endblock %}
+{% block page_title %}Monitoring Media Eksternal{% endblock %}
+
+{% block filter_controls %}
+<!-- External Links, Manual Add & Sync Action Buttons -->
+<div style="display:flex;align-items:center;gap:0.5rem;" x-data>
+    <a href="https://timesindonesia.co.id/search?q=unmer+malang" target="_blank" rel="noopener noreferrer" class="btn-ui btn-ui-secondary" style="font-size:11px;padding:0.35rem 0.65rem;" title="Kunjungi Portal TIMES Indonesia">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+        </svg>
+        <span>TIMES</span>
+    </a>
+    <a href="https://radarmalang.jawapos.com/search?q=unmer+malang" target="_blank" rel="noopener noreferrer" class="btn-ui btn-ui-secondary" style="font-size:11px;padding:0.35rem 0.65rem;" title="Kunjungi Portal Radar Malang">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+        </svg>
+        <span>Radar Malang</span>
+    </a>
+    <button type="button" 
+            @click="$dispatch('open-add-external-modal')"
+            class="btn-ui btn-ui-secondary"
+            style="font-size:11px;padding:0.35rem 0.75rem;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;"
+            title="Tambah Liputan Berita Secara Manual">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+        </svg>
+        <span>+ Tambah Manual</span>
+    </button>
+    <button type="button" 
+            hx-post="/partials/external-media/sync" 
+            hx-target="#ext-sync-feedback" 
+            hx-swap="innerHTML" 
+            hx-indicator="#ext-sync-spinner"
+            class="btn-ui btn-ui-primary"
+            style="font-size:11px;padding:0.35rem 0.85rem;"
+            title="Tarik liputan berita terbaru dari TIMES Indonesia & Radar Malang">
+        <svg id="ext-sync-spinner" class="htmx-indicator" style="width:13px;height:13px;animation:spin 1s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </svg>
+        <span class="btn-text">Sinkronkan Data</span>
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ showAddModal: false }" @open-add-external-modal.window="showAddModal = true" style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- Modal Tambah Berita Manual -->
+    <div x-show="showAddModal" 
+         x-cloak
+         style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);padding:1rem;">
+        <div @click.away="showAddModal = false"
+             style="width:100%;max-width:540px;background:#0d121f;border:1px solid #1e293b;border-radius:14px;box-shadow:0 20px 40px rgba(0,0,0,0.8);overflow:hidden;">
+            <!-- Header -->
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;">Tambah Berita Eksternal Manual</h3>
+                    <p style="margin:0.25rem 0 0;font-size:11px;color:#94a3b8;">Input artikel atau liputan berita yang belum tercakup di pencarian otomatis</p>
+                </div>
+                <button type="button" @click="showAddModal = false" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:0.25rem;">
+                    <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form hx-post="/partials/external-media/create"
+                  hx-target="#ext-sync-feedback"
+                  hx-swap="innerHTML"
+                  @htmx:after-request="if(event.detail.successful) { showAddModal = false; $el.reset(); }"
+                  style="padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1rem;margin:0;">
+                
+                <!-- Sumber Media & Kategori -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Sumber Media *</label>
+                        <input type="text" name="source_name" list="ext-source-datalist" required placeholder="Contoh: Radar Malang"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                        <datalist id="ext-source-datalist">
+                            <option value="Radar Malang">
+                            <option value="TIMES Indonesia">
+                            <option value="Kompas">
+                            <option value="Detik">
+                            <option value="Surya Malang">
+                            <option value="Antara News">
+                            <option value="Tribun Jatim">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Kategori</label>
+                        <input type="text" name="category_name" placeholder="Pendidikan / Prestasi" value="Pendidikan"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                    </div>
+                </div>
+
+                <!-- Judul Berita -->
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Judul Liputan Berita *</label>
+                    <input type="text" name="title" required placeholder="Judul artikel berita seputar UNMER..."
+                           style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                </div>
+
+                <!-- URL Berita -->
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">URL / Tautan Asli *</label>
+                    <input type="url" name="url" required placeholder="https://..."
+                           style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                </div>
+
+                <!-- Tanggal & Waktu -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Tanggal Terbit *</label>
+                        <input type="date" name="published_date" required value="2026-10-08"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Waktu (Opsional)</label>
+                        <input type="time" name="published_time" value="12:00"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                    </div>
+                </div>
+
+                <!-- Penulis/Editor, Kota, & Estimasi Pembaca -->
+                <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:0.75rem;">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Penulis / Editor</label>
+                        <input type="text" name="author_name" placeholder="Redaksi / Nama"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Kota</label>
+                        <input type="text" name="city" value="Malang"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Estimasi Views</label>
+                        <input type="number" name="pageviews" value="0" min="0"
+                               style="width:100%;height:36px;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0 0.65rem;color:#f1f5f9;font-size:12px;">
+                    </div>
+                </div>
+
+                <!-- Ringkasan / Catatan -->
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:600;color:#cbd5e1;margin-bottom:0.35rem;">Ringkasan / Catatan (Opsional)</label>
+                    <textarea name="excerpt" rows="2" placeholder="Catatan singkat perihal liputan berita..."
+                              style="width:100%;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:0.5rem 0.65rem;color:#f1f5f9;font-size:12px;resize:vertical;"></textarea>
+                </div>
+
+                <!-- Footer Actions -->
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.5rem;padding-top:0.75rem;border-top:1px solid #1e293b;">
+                    <button type="button" @click="showAddModal = false" class="btn-ui btn-ui-secondary" style="font-size:12px;padding:0.45rem 1rem;">
+                        Batal
+                    </button>
+                    <button type="submit" class="btn-ui btn-ui-primary" style="font-size:12px;padding:0.45rem 1.25rem;">
+                        Simpan Berita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sync Feedback Notification Area -->
+    <div id="ext-sync-feedback"></div>
+
+    <!-- Summary KPI Cards -->
+    <div id="ext-summary-cards">
+        <div class="kpi-grid">
+            <!-- 1. Total Berita Eksternal -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Total Liputan Eksternal</span>
+                    <div class="kpi-icon-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_posts }}</span>
+                        <span class="delta-pill delta-positive">Berita Terbit</span>
+                    </div>
+                    <p class="kpi-card-caption">Liputan media massa tentang UNMER</p>
+                </div>
+            </article>
+
+            <!-- 2. Total Pembaca / Pageviews -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Total Pembaca (Pageviews)</span>
+                    <div class="kpi-icon-badge" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_views_formatted }}</span>
+                        <span class="delta-pill delta-neutral">Akumulasi Views</span>
+                    </div>
+                    <p class="kpi-card-caption">Total interaksi pembaca publik</p>
+                </div>
+            </article>
+
+            <!-- 3. Sumber Media Aktif -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Kanal Media Massa</span>
+                    <div class="kpi-icon-badge" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_sources }} Kanal</span>
+                        <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Multi-Source</span>
+                    </div>
+                    <p class="kpi-card-caption">TIMES Indonesia &amp; Media Luar</p>
+                </div>
+            </article>
+
+            <!-- 4. Terakhir Sinkron -->
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Status Database</span>
+                    <div class="kpi-icon-badge" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular" style="font-size:16px;">{{ summary.last_synced_formatted }}</span>
+                        <span class="delta-pill delta-positive">Tersinkron</span>
+                    </div>
+                    <p class="kpi-card-caption">Pembaruan API terakhir</p>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Posts Monitoring Table Card -->
+    <article class="dashboard-card" style="margin:0;padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1.25rem;border-bottom:1px solid #1e293b;">
+            <div>
+                <h3 style="font-size:16px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">
+                    Daftar Liputan Media Eksternal
+                </h3>
+                <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">
+                    Monitoring publikasi berita Universitas Merdeka Malang dari media massa
+                </p>
+            </div>
+
+            <!-- Source Filter, Category Filter, and Search Bar -->
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                <!-- Source Select -->
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                    <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Sumber:</label>
+                    <select id="ext-source-select"
+                            name="source_id"
+                            hx-get="/partials/external-media/posts"
+                            hx-target="#external-media-posts-container"
+                            hx-swap="innerHTML"
+                            hx-include="#ext-category-select, #ext-search-input, #ext-start-date, #ext-end-date, #ext-limit-select, #ext-sort-select"
+                            hx-vals='{"page": 1}'
+                            style="height:34px;font-size:12px;margin:0;padding:0 1.8rem 0 0.65rem;border-radius:8px;background:#0d121f;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                        <option value="all" {% if source_id == 'all' or not source_id %}selected{% endif %}>Semua Media</option>
+                        {% for s in summary.sources %}
+                        <option value="{{ s.source_id }}" {% if source_id == s.source_id %}selected{% endif %}>{{ s.source_name }} ({{ s.count }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category Select -->
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                    <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Kategori:</label>
+                    <select id="ext-category-select"
+                            name="category"
+                            hx-get="/partials/external-media/posts"
+                            hx-target="#external-media-posts-container"
+                            hx-swap="innerHTML"
+                            hx-include="#ext-source-select, #ext-search-input, #ext-start-date, #ext-end-date, #ext-limit-select, #ext-sort-select"
+                            hx-vals='{"page": 1}'
+                            style="height:34px;font-size:12px;margin:0;padding:0 1.8rem 0 0.65rem;border-radius:8px;background:#0d121f;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                        <option value="all" {% if category == 'all' or not category %}selected{% endif %}>Semua Kategori</option>
+                        {% for cat in summary.categories %}
+                        <option value="{{ cat.category_name }}" {% if category == cat.category_name %}selected{% endif %}>{{ cat.category_name }} ({{ cat.count }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Live Search Box -->
+                <div style="position:relative;">
+                    <input type="search" 
+                           id="ext-search-input"
+                           name="search"
+                           value="{{ search or '' }}"
+                           placeholder="Cari liputan..." 
+                           hx-get="/partials/external-media/posts" 
+                           hx-trigger="keyup changed delay:350ms, search" 
+                           hx-target="#external-media-posts-container"
+                           hx-include="#ext-source-select, #ext-category-select, #ext-start-date, #ext-end-date, #ext-limit-select, #ext-sort-select"
+                           hx-vals='{"page": 1}'
+                           style="margin:0;padding:0.4rem 0.75rem 0.4rem 2rem;font-size:12px;width:180px;height:34px;background:#0d121f;border:1px solid #1e293b;border-radius:8px;color:#f1f5f9;">
+                    <svg style="position:absolute;left:0.65rem;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#64748b;pointer-events:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div id="external-media-posts-container">
+            {% include "partials/external_media_table.html" %}
+        </div>
+    </article>
+
+</div>
+{% endblock %}

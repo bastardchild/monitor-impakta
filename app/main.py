@@ -230,7 +230,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         content=f"""
         <!DOCTYPE html>
         <html class="dark">
-        <head><title>500 Internal Error &bull; KPI Sosmed</title><script src="https://cdn.tailwindcss.com"></script></head>
+        <head><title>500 Internal Error &bull; Monitor Sosmed</title><script src="https://cdn.tailwindcss.com"></script></head>
         <body class="bg-[#07090e] text-slate-100 min-h-screen flex items-center justify-center p-4">
             <div class="max-w-md w-full bg-[#0d121f] border border-slate-800 p-6 rounded-2xl space-y-4 text-center">
                 <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">

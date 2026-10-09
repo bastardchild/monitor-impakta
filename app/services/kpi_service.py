@@ -23,26 +23,70 @@ def format_number_id(val: float | int | None) -> str:
         return f"{num:.1f}".replace(".", ",")
 
 
-def format_date_dmy(val: Optional[str | int | float | date | datetime]) -> str:
-    """Format date to DD/MM/YYYY."""
+import zoneinfo
+
+JAKARTA_TZ = zoneinfo.ZoneInfo("Asia/Jakarta")
+ID_MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+
+
+def parse_to_wib(val: Optional[str | int | float | date | datetime]) -> Optional[datetime]:
+    """Parse various timestamp formats and convert to Asia/Jakarta (WIB) timezone."""
     if not val:
-        return "-"
+        return None
     try:
         if isinstance(val, datetime):
-            return val.strftime("%d/%m/%Y")
+            if val.tzinfo is None:
+                return val.replace(tzinfo=JAKARTA_TZ)
+            return val.astimezone(JAKARTA_TZ)
         if isinstance(val, date):
-            return val.strftime("%d/%m/%Y")
+            return datetime(val.year, val.month, val.day, tzinfo=JAKARTA_TZ)
         if isinstance(val, (int, float)):
-            return datetime.fromtimestamp(val).strftime("%d/%m/%Y")
+            return datetime.fromtimestamp(val, tz=JAKARTA_TZ)
+        
         s = str(val).strip()
-        if len(s) >= 10 and s[4] == "-" and s[7] == "-":
-            parts = s[:10].split("-")
-            return f"{parts[2]}/{parts[1]}/{parts[0]}"
+        if not s:
+            return None
+        # Handle ISO with Z or offset
         s_clean = s.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(s_clean)
-        return dt.strftime("%d/%m/%Y")
+        if "T" in s_clean or "+" in s_clean:
+            dt = datetime.fromisoformat(s_clean)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=JAKARTA_TZ)
+            return dt.astimezone(JAKARTA_TZ)
+        # Date only: YYYY-MM-DD
+        if len(s) == 10 and s[4] == "-" and s[7] == "-":
+            parts = s.split("-")
+            return datetime(int(parts[0]), int(parts[1]), int(parts[2]), tzinfo=JAKARTA_TZ)
+        return None
     except Exception:
+        return None
+
+
+def format_date_dmy(val: Optional[str | int | float | date | datetime]) -> str:
+    """Format date to DD/MM/YYYY in WIB."""
+    if not val:
+        return "-"
+    dt = parse_to_wib(val)
+    if not dt:
         return str(val)
+    return dt.strftime("%d/%m/%Y")
+
+
+def format_datetime_id(val: Optional[str | int | float | date | datetime]) -> Dict[str, str]:
+    """Format datetime into Indonesian human-readable date & time (WIB)."""
+    if not val:
+        return {"date": "-", "time": "-", "full": "-"}
+    dt = parse_to_wib(val)
+    if not dt:
+        return {"date": str(val), "time": "-", "full": str(val)}
+    
+    date_str = f"{dt.day:02d} {ID_MONTHS[dt.month]} {dt.year}"
+    time_str = f"{dt.strftime('%H:%M')} WIB"
+    return {
+        "date": date_str,
+        "time": time_str,
+        "full": f"{date_str}, {time_str}"
+    }
 
 
 def get_date_bounds(range_key: str = "30d", start_custom: Optional[str] = None, end_custom: Optional[str] = None) -> Tuple[str, str, int]:
@@ -328,6 +372,7 @@ async def get_trend_chart_data(range_key: str = "30d", platform_id: Optional[str
     views_data = [r["views"] for r in rows]
     followers_data = [r["followers"] for r in rows]
     engagement_data = [r["engagement"] for r in rows]
+    watch_time_hours = [round(float(r["watch_time_sec"] or 0) / 3600.0, 1) for r in rows]
 
     # Platform breakdown for bar chart
     breakdown_sql = f"""
@@ -343,19 +388,81 @@ async def get_trend_chart_data(range_key: str = "30d", platform_id: Optional[str
         "labels": labels,
         "views": views_data,
         "followers": followers_data,
+        "watch_time_hours": watch_time_hours,
         "engagement": engagement_data,
         "platform_breakdown": platform_views,
+        "platform": platform_id or "all",
     }
 
 
-async def get_top_posts(range_key: str = "30d", platform_id: Optional[str] = None, limit: int = 6) -> List[Dict[str, Any]]:
-    start_date, end_date, _ = get_date_bounds(range_key)
-    p_filter = "AND p.platform_id = ?" if platform_id else ""
-    p_args = [platform_id] if platform_id else []
+async def get_top_posts(
+    range_key: str = "30d",
+    platform_id: Optional[str] = None,
+    limit: int = 20,
+    page: int = 1,
+    sort_by: str = "views",
+    search: Optional[str] = None,
+    privacy: Optional[str] = None,
+    start_custom: Optional[str] = None,
+    end_custom: Optional[str] = None
+) -> Dict[str, Any]:
+    """Retrieve posts with pagination, sorting (views/date/stream_date), searching, privacy filter, and date filtering."""
+    start_date, end_date, _ = get_date_bounds(range_key, start_custom=start_custom, end_custom=end_custom)
+    
+    # Validasi limit (20, 50, 100)
+    limit = int(limit)
+    if limit not in (20, 50, 100):
+        limit = 20
+    page = max(1, int(page))
+    offset = (page - 1) * limit
 
-    sql = f"""
+    # Validasi sort
+    if sort_by in ("stream_date", "streamed_at"):
+        order_clause = "COALESCE(p.streamed_at, p.published_at) DESC"
+        sort_by = "stream_date"
+    elif sort_by in ("date", "published_at"):
+        order_clause = "p.published_at DESC"
+        sort_by = "date"
+    else:
+        order_clause = "views DESC, p.published_at DESC"
+        sort_by = "views"
+
+    # Filter platform
+    where_conditions = ["1=1"]
+    params: List[Any] = []
+
+    if platform_id and platform_id != "all":
+        where_conditions.append("p.platform_id = ?")
+        params.append(platform_id)
+
+    # Filter privacy
+    if privacy and privacy.lower() in ("public", "unlisted", "private"):
+        where_conditions.append("p.privacy_status = ?")
+        params.append(privacy.lower())
+
+    # Filter search
+    if search and search.strip():
+        where_conditions.append("(p.title LIKE ? OR p.external_id LIKE ?)")
+        term = f"%{search.strip()}%"
+        params.extend([term, term])
+
+    where_sql = " AND ".join(where_conditions)
+
+    # Hitung total items
+    count_sql = f"""
+        SELECT COUNT(p.id) as total
+        FROM posts p
+        WHERE {where_sql}
+    """
+    count_row = await fetch_one(count_sql, params)
+    total_count = int(count_row["total"]) if count_row and count_row.get("total") is not None else 0
+    total_pages = max(1, (total_count + limit - 1) // limit) if total_count > 0 else 1
+
+    # Query data
+    data_sql = f"""
         SELECT 
-            p.id, p.platform_id, p.external_id, p.title, p.url, p.thumbnail_url, p.post_type, p.published_at,
+            p.id, p.platform_id, p.external_id, p.title, p.url, p.thumbnail_url, p.post_type, 
+            p.published_at, p.streamed_at, COALESCE(p.privacy_status, 'public') as privacy_status,
             COALESCE(SUM(pdm.views), 0) as views,
             COALESCE(SUM(pdm.likes), 0) as likes,
             COALESCE(SUM(pdm.comments), 0) as comments,
@@ -364,20 +471,107 @@ async def get_top_posts(range_key: str = "30d", platform_id: Optional[str] = Non
             COALESCE(AVG(pdm.avg_watch_sec), 0.0) as avg_watch_sec
         FROM posts p
         LEFT JOIN post_daily_metrics pdm ON pdm.post_id = p.id AND pdm.date >= ? AND pdm.date <= ?
-        WHERE 1=1 {p_filter}
+        WHERE {where_sql}
         GROUP BY p.id
-        ORDER BY views DESC
-        LIMIT ?
+        ORDER BY {order_clause}
+        LIMIT ? OFFSET ?
     """
-    rows = await fetch_all(sql, [start_date, end_date] + p_args + [limit])
+    rows = await fetch_all(data_sql, [start_date, end_date] + params + [limit, offset])
     for r in rows:
         r["views_formatted"] = format_number_id(r["views"])
         r["likes_formatted"] = format_number_id(r["likes"])
         r["comments_formatted"] = format_number_id(r["comments"])
         r["shares_formatted"] = format_number_id(r["shares"])
         r["saves_formatted"] = format_number_id(r["saves"])
-        r["published_at"] = format_date_dmy(r.get("published_at"))
-        r["published_at_formatted"] = r["published_at"]
+        r["published_at_formatted"] = format_date_dmy(r.get("published_at"))
+        
+        # Format streamed_at and published_at full WIB
+        pub_info = format_datetime_id(r.get("published_at"))
+        stream_info = format_datetime_id(r.get("streamed_at"))
+        
+        r["published_date_id"] = pub_info["date"]
+        r["published_time_id"] = pub_info["time"]
+        r["published_full_id"] = pub_info["full"]
+
+        r["has_stream"] = bool(r.get("streamed_at"))
+        r["streamed_date_id"] = stream_info["date"]
+        r["streamed_time_id"] = stream_info["time"]
+        r["streamed_full_id"] = stream_info["full"]
+        
+        # Privacy status normalized
+        priv = (r.get("privacy_status") or "public").lower()
+        r["privacy_status"] = priv
+
+    return {
+        "posts": rows,
+        "total_count": total_count,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "prev_page": page - 1 if page > 1 else None,
+        "next_page": page + 1 if page < total_pages else None,
+        "sort_by": sort_by,
+        "privacy": privacy or "",
+        "search": search.strip() if search else "",
+        "start_idx": offset + 1 if total_count > 0 else 0,
+        "end_idx": min(offset + limit, total_count)
+    }
+
+
+async def get_top_youtube_videos(
+    range_key: str = "30d",
+    limit: int = 4,
+    start_custom: Optional[str] = None,
+    end_custom: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Retrieve top YouTube videos with the highest views."""
+    start_date, end_date, _ = get_date_bounds(range_key, start_custom=start_custom, end_custom=end_custom)
+    
+    data_sql = """
+        SELECT 
+            p.id, p.platform_id, p.external_id, p.title, p.url, p.thumbnail_url, p.post_type, p.published_at,
+            COALESCE(SUM(pdm.views), 0) as views,
+            COALESCE(SUM(pdm.likes), 0) as likes,
+            COALESCE(SUM(pdm.comments), 0) as comments,
+            COALESCE(SUM(pdm.shares), 0) as shares,
+            COALESCE(AVG(pdm.avg_watch_sec), 0.0) as avg_watch_sec
+        FROM posts p
+        LEFT JOIN post_daily_metrics pdm ON pdm.post_id = p.id AND pdm.date >= ? AND pdm.date <= ?
+        WHERE p.platform_id = 'youtube'
+        GROUP BY p.id
+        ORDER BY views DESC, p.published_at DESC
+        LIMIT ?
+    """
+    rows = await fetch_all(data_sql, [start_date, end_date, limit])
+    
+    has_views = any(r.get("views", 0) > 0 for r in rows)
+    if not has_views or len(rows) < limit:
+        fallback_sql = """
+            SELECT 
+                p.id, p.platform_id, p.external_id, p.title, p.url, p.thumbnail_url, p.post_type, p.published_at,
+                COALESCE(SUM(pdm.views), 0) as views,
+                COALESCE(SUM(pdm.likes), 0) as likes,
+                COALESCE(SUM(pdm.comments), 0) as comments,
+                COALESCE(SUM(pdm.shares), 0) as shares,
+                COALESCE(AVG(pdm.avg_watch_sec), 0.0) as avg_watch_sec
+            FROM posts p
+            LEFT JOIN post_daily_metrics pdm ON pdm.post_id = p.id
+            WHERE p.platform_id = 'youtube'
+            GROUP BY p.id
+            ORDER BY views DESC, p.published_at DESC
+            LIMIT ?
+        """
+        rows = await fetch_all(fallback_sql, [limit])
+
+    for r in rows:
+        r["views_formatted"] = format_number_id(r["views"])
+        r["likes_formatted"] = format_number_id(r["likes"])
+        r["comments_formatted"] = format_number_id(r["comments"])
+        r["shares_formatted"] = format_number_id(r["shares"])
+        r["published_at_formatted"] = format_date_dmy(r.get("published_at"))
+        
     return rows
 
 

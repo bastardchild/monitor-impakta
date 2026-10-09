@@ -3,12 +3,14 @@ services:
     build:
       context: .
       target: runtime
-    container_name: kpi_app
+    container_name: monitor_impakta
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8001:8000"
     env_file:
       - .env
+    volumes:
+      - ./app:/app/app:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
       interval: 10s
@@ -21,11 +23,19 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - kpi_net
+      - monitor_net
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: monitor_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://app:8000
+    networks:
+      - monitor_net
 
   n8n:
     image: n8nio/n8n:1.80.0
-    container_name: kpi_n8n
+    container_name: monitor_n8n
     restart: unless-stopped
     ports:
       - "127.0.0.1:5678:5678"
@@ -51,11 +61,11 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - kpi_net
+      - monitor_net
 
   n8n-import:
     image: n8nio/n8n:1.80.0
-    container_name: kpi_n8n_import
+    container_name: monitor_n8n_import
     restart: "no"
     depends_on:
       n8n:
@@ -65,11 +75,11 @@ services:
       - ./n8n/workflows:/workflows:ro
     entrypoint: ["n8n", "import:workflow", "--separate", "--input=/workflows"]
     networks:
-      - kpi_net
+      - monitor_net
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: kpi_tunnel
+    container_name: monitor_tunnel
     restart: unless-stopped
     profiles:
       - tunnel
@@ -77,13 +87,13 @@ services:
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
     networks:
-      - kpi_net
+      - monitor_net
 
   tools:
     build:
       context: .
       target: test
-    container_name: kpi_tools
+    container_name: monitor_tools
     profiles:
       - tools
     env_file:
@@ -93,13 +103,13 @@ services:
     stdin_open: true
     tty: true
     networks:
-      - kpi_net
+      - monitor_net
 
   tests:
     build:
       context: .
       target: test
-    container_name: kpi_tests
+    container_name: monitor_tests
     profiles:
       - test
     environment:
@@ -113,11 +123,11 @@ services:
       - BASE_URL=http://testserver
     command: ["pytest", "-q"]
     networks:
-      - kpi_net
+      - monitor_net
 
 volumes:
   n8n_data:
 
 networks:
-  kpi_net:
+  monitor_net:
     driver: bridge

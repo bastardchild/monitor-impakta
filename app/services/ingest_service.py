@@ -68,18 +68,21 @@ async def ingest_posts(items: List[PostItem]) -> int:
             await execute(
                 """
                 INSERT INTO posts (
-                    id, platform_id, external_id, title, url, thumbnail_url, post_type, published_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    id, platform_id, external_id, title, url, thumbnail_url, post_type, published_at, streamed_at, privacy_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(external_id) DO UPDATE SET
                     title = excluded.title,
                     url = excluded.url,
                     thumbnail_url = excluded.thumbnail_url,
                     post_type = excluded.post_type,
-                    published_at = excluded.published_at
+                    published_at = excluded.published_at,
+                    streamed_at = COALESCE(excluded.streamed_at, posts.streamed_at),
+                    privacy_status = COALESCE(excluded.privacy_status, posts.privacy_status)
                 """,
                 [
                     post_id, item.platform_id, item.external_id, item.title,
-                    item.url, item.thumbnail_url, item.post_type, item.published_at
+                    item.url, item.thumbnail_url, item.post_type, item.published_at,
+                    item.streamed_at, item.privacy_status or "public"
                 ]
             )
             rows += 1

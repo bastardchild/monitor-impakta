@@ -113,15 +113,24 @@ async def unmer_portal_page(
     request: Request,
     category: Optional[str] = "all",
     search: Optional[str] = None,
+    limit: int = 20,
+    page: int = 1,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    sort_by: str = "date",
     _: None = Depends(require_auth)
 ):
     from app.services.unmer_service import get_unmer_summary, get_unmer_posts
     flash = _get_flash_messages(request)
     summary = await get_unmer_summary()
-    posts = await get_unmer_posts(
+    post_data = await get_unmer_posts(
         category=category if category != "all" else None,
         search=search,
-        limit=50
+        limit=limit,
+        page=page,
+        start_date=start_date,
+        end_date=end_date,
+        sort_by=sort_by
     )
     return templates.TemplateResponse(
         request,
@@ -129,9 +138,47 @@ async def unmer_portal_page(
         {
             "current_page": "unmer",
             "summary": summary,
-            "posts": posts,
-            "active_category": category or "all",
-            "search_query": search or "",
+            **post_data,
+            **flash
+        }
+    )
+
+
+@router.get("/media-eksternal", response_class=HTMLResponse)
+async def external_media_page(
+    request: Request,
+    source_id: Optional[str] = "all",
+    category: Optional[str] = "all",
+    search: Optional[str] = None,
+    limit: int = 20,
+    page: int = 1,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    month_filter: Optional[str] = None,
+    sort_by: str = "date",
+    _: None = Depends(require_auth)
+):
+    from app.services.external_media_service import get_external_media_summary, get_external_news_posts
+    flash = _get_flash_messages(request)
+    summary = await get_external_media_summary()
+    post_data = await get_external_news_posts(
+        source_id=source_id,
+        category=category,
+        search=search,
+        limit=limit,
+        page=page,
+        start_date=start_date,
+        end_date=end_date,
+        month_filter=month_filter,
+        sort_by=sort_by
+    )
+    return templates.TemplateResponse(
+        request,
+        "external_media.html",
+        {
+            "current_page": "external_media",
+            "summary": summary,
+            **post_data,
             **flash
         }
     )

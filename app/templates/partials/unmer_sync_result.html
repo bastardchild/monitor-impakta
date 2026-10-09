@@ -19,10 +19,10 @@
 
 <!-- Auto-refresh stat cards via OOB -->
 <div id="unmer-summary-cards" hx-swap-oob="true">
-    <div class="kpi-grid">
+    <div class="kpi-grid kpi-grid-5">
         <article class="kpi-card">
             <div class="kpi-card-header">
-                <span class="kpi-card-title">Total Publikasi Tersimpan</span>
+                <span class="kpi-card-title">Total Publikasi</span>
                 <div class="kpi-icon-badge" style="background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.25);">
                     <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
                 </div>
@@ -32,7 +32,23 @@
                     <span class="kpi-card-value font-tabular">{{ summary.total_posts }}</span>
                     <span class="delta-pill delta-neutral">Konten Web</span>
                 </div>
-                <p class="kpi-card-caption">Total akumulasi artikel & berita</p>
+                <p class="kpi-card-caption">Total akumulasi artikel &amp; berita</p>
+            </div>
+        </article>
+
+        <article class="kpi-card">
+            <div class="kpi-card-header">
+                <span class="kpi-card-title">Total Pembaca (Views)</span>
+                <div class="kpi-icon-badge" style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+            </div>
+            <div>
+                <div class="kpi-card-footer">
+                    <span class="kpi-card-value font-tabular">{{ summary.total_views_formatted }}</span>
+                    <span class="delta-pill delta-positive">Live Views</span>
+                </div>
+                <p class="kpi-card-caption">Akumulasi pembaca portal unmer</p>
             </div>
         </article>
 
@@ -62,7 +78,7 @@
             <div>
                 <div class="kpi-card-footer">
                     <span class="kpi-card-value font-tabular">{{ summary.total_artikel }}</span>
-                    <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Opini & Gagasan</span>
+                    <span class="delta-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);">Opini &amp; Gagasan</span>
                 </div>
                 <p class="kpi-card-caption">Kategori ID 919 (Portal Resmi)</p>
             </div>

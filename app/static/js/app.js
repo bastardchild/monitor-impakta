@@ -25,6 +25,11 @@ function renderTrendChart(canvasId, data) {
     const textColor = '#94a3b8';
     const gridColor = 'rgba(255, 255, 255, 0.04)';
 
+    const isYouTube = data.platform === 'youtube';
+    const secondLabel = isYouTube ? 'Waktu Tonton (Jam)' : 'Pengikut (Followers)';
+    const secondData = isYouTube && data.watch_time_hours ? data.watch_time_hours : data.followers;
+    const secondColor = isYouTube ? '#10b981' : '#34d399';
+
     window.kpiCharts[canvasId] = new Chart(ctx, {
         type: 'line',
         data: {
@@ -46,18 +51,19 @@ function renderTrendChart(canvasId, data) {
                     yAxisID: 'y',
                 },
                 {
-                    label: 'Pengikut (Followers)',
-                    data: data.followers,
-                    borderColor: '#34d399', // Emerald 400
-                    backgroundColor: 'transparent',
+                    label: secondLabel,
+                    data: secondData,
+                    borderColor: secondColor,
+                    backgroundColor: isYouTube ? 'rgba(16, 185, 129, 0.05)' : 'transparent',
                     borderWidth: 2,
-                    borderDash: [4, 4],
+                    borderDash: isYouTube ? [] : [4, 4],
                     pointRadius: 0,
                     pointHoverRadius: 4,
-                    pointHoverBackgroundColor: '#34d399',
+                    pointHoverBackgroundColor: secondColor,
                     pointHoverBorderColor: '#0f172a',
                     pointHoverBorderWidth: 2,
                     tension: 0.35,
+                    fill: isYouTube,
                     yAxisID: 'y1',
                 }
             ]
@@ -168,3 +174,12 @@ function renderTrendChart(canvasId, data) {
         }
     });
 }
+
+// Automatically re-initialize Alpine.js components on HTMX content swaps
+document.addEventListener('htmx:afterSwap', function (e) {
+    if (window.Alpine && e.detail && e.detail.target) {
+        window.Alpine.initTree(e.detail.target);
+    }
+});
+
+

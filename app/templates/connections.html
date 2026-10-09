@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Koneksi Akun Platform &bull; KPI Sosmed{% endblock %}
+{% block title %}Koneksi Akun Platform &bull; Monitor Sosmed{% endblock %}
 {% block page_title %}Pengaturan Koneksi Akun{% endblock %}
 
 {% block content %}
@@ -8,9 +8,11 @@
     disconnectModalOpen: false, 
     disconnectPlatform: '', 
     disconnectName: '',
+    deleteData: false,
     confirmDisconnect(platform, name) {
         this.disconnectPlatform = platform;
         this.disconnectName = name;
+        this.deleteData = false;
         this.disconnectModalOpen = true;
     }
 }">
@@ -116,7 +118,7 @@
          class="modal-overlay" 
          x-transition.opacity 
          x-cloak>
-        <div @click.away="disconnectModalOpen = false" class="modal-card" style="max-width:420px;">
+        <div @click.away="disconnectModalOpen = false" class="modal-card" style="max-width:440px;">
             <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem;">
                 <div style="width:40px;height:40px;border-radius:10px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.25);color:#fb7185;display:flex;align-items:center;justify-content:center;">
                     <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -126,19 +128,42 @@
                 <div>
                     <h3 style="font-size:16px;font-weight:700;color:#ffffff;margin:0;">Konfirmasi Pemutusan Akun</h3>
                     <p style="font-size:13px;color:#94a3b8;margin:0.35rem 0 0;line-height:1.4;">
-                        Apakah Anda yakin ingin memutuskan akun <strong style="color:#ffffff;" x-text="disconnectName"></strong>? Token otorisasi akan dicabut dari platform dan dihapus secara permanen.
+                        Apakah Anda yakin ingin memutuskan koneksi akun <strong style="color:#ffffff;" x-text="disconnectName"></strong>? Token otorisasi akan dicabut dari platform terkait.
                     </p>
                 </div>
+
+                <!-- Form Pemutusan Akun & Opsi Hapus Data -->
+                <form :action="'/disconnect/' + disconnectPlatform" method="post" id="disconnect-form" style="margin:0;display:flex;flex-direction:column;gap:0.75rem;">
+                    
+                    <!-- Checkbox Hapus Data User -->
+                    <div style="padding:0.75rem 0.85rem;border-radius:8px;background:rgba(15,23,42,0.6);border:1px solid #1e293b;display:flex;flex-direction:column;gap:0.35rem;">
+                        <label style="display:flex;align-items:center;gap:0.5rem;font-size:13px;font-weight:600;color:#f1f5f9;cursor:pointer;margin:0;">
+                            <input type="checkbox" 
+                                   name="delete_data" 
+                                   value="1" 
+                                   x-model="deleteData"
+                                   style="margin:0;width:16px;height:16px;accent-color:#ef4444;cursor:pointer;">
+                            <span>Hapus seluruh data pengguna &amp; konten</span>
+                        </label>
+                        <p style="font-size:11px;color:#94a3b8;margin:0;padding-left:1.5rem;line-height:1.35;">
+                            Menghapus seluruh postingan, riwayat metrik harian, analisis sentimen, dan target yang tersimpan untuk platform ini di database.
+                        </p>
+                    </div>
+
+                    <!-- Warning if delete data checked -->
+                    <div x-show="deleteData" x-transition style="padding:0.6rem 0.75rem;border-radius:6px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;font-size:11px;line-height:1.4;">
+                        &bull; <strong>Perhatian:</strong> Penghapusan data bersifat permanen dan tidak dapat dipulihkan kembali.
+                    </div>
+                </form>
             </div>
-            <div class="modal-footer">
+            
+            <div class="modal-footer" style="display:flex;align-items:center;justify-content:flex-end;gap:0.5rem;">
                 <button type="button" @click="disconnectModalOpen = false" class="btn-ui btn-ui-secondary">
                     Batal
                 </button>
-                <form :action="'/disconnect/' + disconnectPlatform" method="post" style="margin:0;">
-                    <button type="submit" class="btn-ui btn-ui-danger">
-                        Putuskan Akun
-                    </button>
-                </form>
+                <button type="submit" form="disconnect-form" class="btn-ui btn-ui-danger">
+                    <span x-text="deleteData ? 'Putuskan & Hapus Data' : 'Putuskan Akun'">Putuskan Akun</span>
+                </button>
             </div>
         </div>
     </div>

@@ -160,8 +160,15 @@ async def select_instagram_page_submit(
 @router.post("/disconnect/{platform}")
 async def disconnect(platform: str, request: Request, _: None = Depends(require_auth)):
     platform = platform.lower()
-    await disconnect_account(platform)
-    request.session["flash_success"] = f"Koneksi {platform.capitalize()} berhasil diputuskan."
+    form_data = await request.form()
+    delete_data = form_data.get("delete_data") in ("1", "true", "on", True)
+    
+    await disconnect_account(platform, delete_data=delete_data)
+    
+    if delete_data:
+        request.session["flash_success"] = f"Koneksi {platform.capitalize()} berhasil diputuskan dan seluruh data pengguna/konten telah dihapus."
+    else:
+        request.session["flash_success"] = f"Koneksi {platform.capitalize()} berhasil diputuskan."
     
     if request.headers.get("HX-Request"):
         # Respond with HX-Redirect to refresh page cleanly
@@ -172,8 +179,35 @@ async def disconnect(platform: str, request: Request, _: None = Depends(require_
 @router.post("/connections/{platform}/sync")
 async def trigger_platform_sync(platform: str, request: Request, _: None = Depends(require_auth)):
     settings = get_settings()
-    platform = platform.lower()
-    
+    if platform == "youtube":
+        try:
+            from app.services.youtube_service import sync_youtube_videos
+            res = await sync_youtube_videos(since_year=2024)
+            total = res.get("total_upserted", 0)
+            y_info = ", ".join(f"{yr}: {cnt}" for yr, cnt in res.get("posts_by_year", {}).items())
+            return templates.TemplateResponse(
+                request,
+                "partials/sync_status.html",
+                {"status": "success", "message": f"Berhasil sinkronisasi YouTube! {total} video tersimpan ({y_info})."}
+            )
+        except Exception as e:
+            logger.error(f"Error in direct YouTube sync: {e}")
+            err_id = await log_system_error(
+                category=ErrorCategory.OAUTH,
+                error_code=ErrorCode.OAUTH_WEBHOOK_FAILED,
+                message=f"Error running direct YouTube sync: {str(e)}",
+                exc=e,
+                path=request.url.path,
+                method=request.method,
+                platform_id=platform,
+                status_code=500,
+            )
+            return templates.TemplateResponse(
+                request,
+                "partials/sync_status.html",
+                {"status": "error", "message": f"Gagal sinkronisasi YouTube: {str(e)} ({err_id})"}
+            )
+
     url_attr = f"N8N_WEBHOOK_URL_{platform.upper()}"
     webhook_url = getattr(settings, url_attr, None)
     

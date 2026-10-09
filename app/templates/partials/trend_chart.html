@@ -9,17 +9,30 @@
     <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:1.25rem;">
         <div>
             <h3 style="font-size:14px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">Tren Performa Harian</h3>
-            <p style="font-size:12px;color:#94a3b8;margin:0.2rem 0 0;">Dinamika penayangan dan pertumbuhan pengikut seiring waktu</p>
+            <p style="font-size:12px;color:#94a3b8;margin:0.2rem 0 0;">
+                {% if chart_data.platform == 'youtube' %}
+                Dinamika penayangan dan jam tonton dokumentasi kegiatan
+                {% else %}
+                Dinamika penayangan dan pertumbuhan pengikut seiring waktu
+                {% endif %}
+            </p>
         </div>
         <div style="display:flex;align-items:center;gap:1rem;font-size:12px;font-weight:500;">
             <div style="display:flex;align-items:center;gap:0.4rem;">
                 <span style="width:10px;height:10px;border-radius:50%;background:#38bdf8;box-shadow:0 0 8px rgba(56,189,248,0.4);"></span>
                 <span style="color:#cbd5e1;">Views</span>
             </div>
+            {% if chart_data.platform == 'youtube' %}
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#10b981;box-shadow:0 0 8px rgba(16,185,129,0.4);"></span>
+                <span style="color:#cbd5e1;">Waktu Tonton (Jam)</span>
+            </div>
+            {% else %}
             <div style="display:flex;align-items:center;gap:0.4rem;">
                 <span style="width:10px;height:10px;border-radius:50%;background:#34d399;box-shadow:0 0 8px rgba(52,211,153,0.4);"></span>
                 <span style="color:#cbd5e1;">Followers</span>
             </div>
+            {% endif %}
         </div>
     </div>
 

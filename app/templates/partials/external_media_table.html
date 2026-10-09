@@ -1,0 +1,361 @@
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- Filter Controls Toolbar (Source, Category, Date Filters & Limit) -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1rem;border-bottom:1px solid #1e293b;">
+        <!-- Left Filter Controls: Kalender Google Style & Arsip Bulan -->
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+            <!-- Filter Pop-up Kalender Google Style -->
+            <div x-data="{
+                open: false,
+                tempStart: '{{ start_date or '' }}',
+                tempEnd: '{{ end_date or '' }}',
+                formatDate(d) {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                },
+                setPreset(days) {
+                    const end = new Date();
+                    const start = new Date();
+                    start.setDate(end.getDate() - days);
+                    this.tempStart = this.formatDate(start);
+                    this.tempEnd = this.formatDate(end);
+                    this.applyFilter();
+                },
+                setThisMonth() {
+                    const now = new Date();
+                    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    this.tempStart = this.formatDate(start);
+                    this.tempEnd = this.formatDate(now);
+                    this.applyFilter();
+                },
+                resetDates() {
+                    this.tempStart = '';
+                    this.tempEnd = '';
+                    this.applyFilter();
+                },
+                applyFilter() {
+                    this.open = false;
+                    if (this.tempStart && !this.tempEnd) {
+                        this.tempEnd = this.tempStart;
+                    } else if (!this.tempStart && this.tempEnd) {
+                        this.tempStart = this.tempEnd;
+                    }
+                    const sourceEl = document.getElementById('ext-source-select');
+                    const sourceVal = sourceEl ? sourceEl.value : '{{ source_id or 'all' }}';
+                    const catEl = document.getElementById('ext-category-select');
+                    const catVal = catEl ? catEl.value : '{{ category or 'all' }}';
+                    const searchEl = document.getElementById('ext-search-input');
+                    const searchVal = searchEl ? searchEl.value : '';
+                    const limitEl = document.getElementById('ext-limit-select');
+                    const limitVal = limitEl ? limitEl.value : '{{ limit or 20 }}';
+                    const sortEl = document.getElementById('ext-sort-select');
+                    const sortVal = sortEl ? sortEl.value : '{{ sort_by or 'date' }}';
+                    const url = '/partials/external-media/posts?source_id=' + encodeURIComponent(sourceVal) +
+                                '&category=' + encodeURIComponent(catVal) +
+                                '&page=1&limit=' + encodeURIComponent(limitVal) +
+                                '&sort_by=' + encodeURIComponent(sortVal) +
+                                '&search=' + encodeURIComponent(searchVal) +
+                                '&start_date=' + encodeURIComponent(this.tempStart) +
+                                '&end_date=' + encodeURIComponent(this.tempEnd);
+                    htmx.ajax('GET', url, { target: '#external-media-posts-container', swap: 'innerHTML' });
+                }
+            }" style="position:relative;">
+                <input type="hidden" id="ext-start-date" name="start_date" :value="tempStart" value="{{ start_date or '' }}">
+                <input type="hidden" id="ext-end-date" name="end_date" :value="tempEnd" value="{{ end_date or '' }}">
+
+                <!-- Trigger Button Google Style -->
+                <button type="button" 
+                        @click.stop="open = !open" 
+                        class="btn-filter {% if start_date or end_date %}active{% endif %}"
+                        style="height:36px;padding:0 0.85rem;display:inline-flex;align-items:center;gap:0.5rem;font-size:12px;border-radius:8px;background:{% if start_date or end_date %}rgba(56,189,248,0.12){% else %}#090d16{% endif %};border:1px solid {% if start_date or end_date %}rgba(56,189,248,0.35){% else %}#1e293b{% endif %};color:{% if start_date or end_date %}#38bdf8{% else %}#e2e8f0{% endif %};cursor:pointer;transition:all 0.15s ease;"
+                        title="Pilih Rentang Tanggal Kalender">
+                    <svg style="width:14px;height:14px;flex-shrink:0;color:{% if start_date or end_date %}#38bdf8{% else %}#94a3b8{% endif %};" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z"/>
+                    </svg>
+                    <span style="font-weight:500;">
+                        {% if start_date and end_date and start_date == end_date %}
+                            {{ start_date }}
+                        {% elif start_date and end_date %}
+                            {{ start_date }} &rarr; {{ end_date }}
+                        {% elif start_date %}
+                            {{ start_date }}
+                        {% elif end_date %}
+                            Sampai: {{ end_date }}
+                        {% else %}
+                            Filter Tanggal
+                        {% endif %}
+                    </span>
+                    <svg style="width:12px;height:12px;color:#64748b;margin-left:0.15rem;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                </button>
+
+                <!-- Modal Pop-up Kalender -->
+                <div x-show="open" 
+                     @click.away="open = false" 
+                     x-transition:enter="transition ease-out duration-150" 
+                     x-transition:enter-start="opacity-0 transform scale-95" 
+                     x-transition:enter-end="opacity-100 transform scale-100" 
+                     x-transition:leave="transition ease-in duration-100" 
+                     x-transition:leave-start="opacity-100 transform scale-100" 
+                     x-transition:leave-end="opacity-0 transform scale-95" 
+                     style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:9999;width:340px;background:#0d121f;border:1px solid #1e293b;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.6);padding:1.25rem;">
+                    
+                    <div style="font-size:11px;font-weight:700;color:#94a3b8;font-family:var(--font-mono);text-transform:uppercase;margin-bottom:0.85rem;letter-spacing:0.04em;">
+                        Pilih Rentang Waktu
+                    </div>
+
+                    <!-- Preset Cepat -->
+                    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:0.4rem;margin-bottom:1rem;">
+                        <button type="button" @click="setPreset(7)" style="padding:0.35rem 0.5rem;font-size:11px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;cursor:pointer;">7 Hari</button>
+                        <button type="button" @click="setPreset(30)" style="padding:0.35rem 0.5rem;font-size:11px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;cursor:pointer;">30 Hari</button>
+                        <button type="button" @click="setThisMonth()" style="padding:0.35rem 0.5rem;font-size:11px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;cursor:pointer;">Bulan Ini</button>
+                    </div>
+
+                    <!-- Custom Inputs -->
+                    <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1rem;">
+                        <div>
+                            <label style="font-size:11px;color:#94a3b8;margin-bottom:0.25rem;display:block;">Dari Tanggal</label>
+                            <input type="date" x-model="tempStart" style="width:100%;height:34px;background:#090d16;border:1px solid #1e293b;border-radius:6px;color:#f1f5f9;font-size:12px;padding:0 0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:#94a3b8;margin-bottom:0.25rem;display:block;">Sampai Tanggal</label>
+                            <input type="date" x-model="tempEnd" style="width:100%;height:34px;background:#090d16;border:1px solid #1e293b;border-radius:6px;color:#f1f5f9;font-size:12px;padding:0 0.5rem;">
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #1e293b;padding-top:0.85rem;">
+                        <button type="button" @click="resetDates()" style="font-size:11px;color:#ef4444;background:transparent;border:none;cursor:pointer;padding:0.25rem 0.5rem;">Reset</button>
+                        <div style="display:flex;gap:0.5rem;">
+                            <button type="button" @click="open = false" style="padding:0.35rem 0.75rem;font-size:12px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;cursor:pointer;">Batal</button>
+                            <button type="button" @click="applyFilter()" style="padding:0.35rem 0.85rem;font-size:12px;border-radius:6px;background:#0284c7;border:none;color:#ffffff;font-weight:600;cursor:pointer;">Terapkan</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dropdown Pilihan Arsip Bulan -->
+            {% if archive_months and archive_months | length > 0 %}
+            <div style="display:flex;align-items:center;gap:0.35rem;">
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Arsip:</label>
+                <select id="ext-month-select"
+                        name="month_filter"
+                        hx-get="/partials/external-media/posts"
+                        hx-target="#external-media-posts-container"
+                        hx-swap="innerHTML"
+                        hx-include="#ext-source-select, #ext-category-select, #ext-search-input, #ext-limit-select, #ext-sort-select"
+                        hx-vals='{"page": 1, "start_date": "", "end_date": ""}'
+                        style="height:36px;font-size:12px;margin:0;padding:0 2rem 0 0.75rem;border-radius:8px;background:#090d16;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                    <option value="" {% if not month_filter %}selected{% endif %}>Semua Periode</option>
+                    {% for m in archive_months %}
+                    <option value="{{ m.ym }}" {% if month_filter == m.ym %}selected{% endif %}>
+                        {{ m.label }} ({{ m.count }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Controls: Sort & Items Per Page -->
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <!-- Sort By -->
+            <div style="display:flex;align-items:center;gap:0.35rem;">
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Urutkan:</label>
+                <select id="ext-sort-select"
+                        name="sort_by"
+                        hx-get="/partials/external-media/posts"
+                        hx-target="#external-media-posts-container"
+                        hx-swap="innerHTML"
+                        hx-include="#ext-source-select, #ext-category-select, #ext-search-input, #ext-start-date, #ext-end-date, #ext-limit-select"
+                        hx-vals='{"page": 1}'
+                        style="height:36px;font-size:12px;margin:0;padding:0 2rem 0 0.75rem;border-radius:8px;background:#090d16;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                    <option value="date" {% if sort_by == 'date' or not sort_by %}selected{% endif %}>Terbaru</option>
+                    <option value="views" {% if sort_by == 'views' %}selected{% endif %}>Pembaca Terbanyak</option>
+                </select>
+            </div>
+
+            <!-- Items Per Page -->
+            <div style="display:flex;align-items:center;gap:0.35rem;">
+                <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Tampilkan:</label>
+                <select id="ext-limit-select"
+                        name="limit"
+                        hx-get="/partials/external-media/posts"
+                        hx-target="#external-media-posts-container"
+                        hx-swap="innerHTML"
+                        hx-include="#ext-source-select, #ext-category-select, #ext-search-input, #ext-start-date, #ext-end-date, #ext-sort-select"
+                        hx-vals='{"page": 1}'
+                        style="height:36px;font-size:12px;margin:0;padding:0 2rem 0 0.75rem;border-radius:8px;background:#090d16;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                    <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
+                    <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-wrapper" style="border:1px solid #1e293b;border-radius:10px;overflow:hidden;background:#090d16;">
+        {% if posts and posts | length > 0 %}
+        <table class="data-table" style="margin:0;">
+            <thead>
+                <tr>
+                    <th style="width:55px;text-align:center;padding-left:1rem;">No.</th>
+                    <th style="padding-left:0.75rem;">Liputan Berita</th>
+                    <th style="width:140px;">Sumber Media</th>
+                    <th style="width:130px;">Kategori</th>
+                    <th style="text-align:right;width:110px;">Pembaca</th>
+                    <th style="text-align:center;width:120px;padding-right:1rem;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="font-tabular">
+                {% for post in posts %}
+                <tr>
+                    <!-- No. -->
+                    <td style="text-align:center;font-size:12px;color:#64748b;font-family:var(--font-mono);padding-left:1rem;">
+                        {{ (start_idx or 1) + loop.index0 }}
+                    </td>
+
+                    <!-- Liputan Berita (Judul + Tanggal + Penulis) -->
+                    <td style="padding-left:0.75rem;">
+                        <div style="min-width:0;max-width:680px;">
+                            <a href="{{ post.url }}" target="_blank" rel="noopener noreferrer" style="font-weight:600;font-size:13px;color:#f1f5f9;text-decoration:none;display:block;line-height:1.45;margin-bottom:0.35rem;" title="{{ post.title }}">
+                                {{ post.title }}
+                            </a>
+                            <div style="display:flex;align-items:center;gap:0.5rem;font-size:11px;color:#64748b;font-family:var(--font-mono);">
+                                <span style="color:#cbd5e1;">📅 {{ post.published_at_formatted }}</span>
+                                {% if post.published_time %}
+                                <span>&bull; {{ post.published_time }}</span>
+                                {% endif %}
+                                {% if post.author_name %}
+                                <span>&bull; Oleh: {{ post.author_name }}</span>
+                                {% endif %}
+                                {% if post.city %}
+                                <span>&bull; {{ post.city }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Sumber Media -->
+                    <td style="white-space:nowrap;">
+                        <span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.25rem 0.65rem;border-radius:6px;font-size:11px;font-weight:600;background:rgba(30,58,138,0.25);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);">
+                            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/></svg>
+                            {{ post.source_name }}
+                        </span>
+                    </td>
+
+                    <!-- Kategori -->
+                    <td style="white-space:nowrap;">
+                        <span style="display:inline-block;padding:0.2rem 0.55rem;border-radius:4px;font-size:11px;background:rgba(51,65,85,0.4);border:1px solid #334155;color:#e2e8f0;">
+                            {{ post.category_name }}
+                        </span>
+                    </td>
+
+                    <!-- Pageviews -->
+                    <td style="text-align:right;white-space:nowrap;">
+                        <span style="font-weight:700;font-size:13px;color:#ffffff;">
+                            {{ post.pageviews_formatted }}
+                        </span>
+                        <span style="font-size:10px;color:#64748b;display:block;">views</span>
+                    </td>
+
+                    <!-- Aksi -->
+                    <td style="text-align:center;padding-right:1rem;white-space:nowrap;">
+                        <div style="display:inline-flex;align-items:center;gap:0.35rem;">
+                            <a href="{{ post.url }}" target="_blank" rel="noopener noreferrer" 
+                               class="btn-ui btn-ui-secondary"
+                               style="padding:0.3rem 0.55rem;font-size:11px;display:inline-flex;align-items:center;gap:0.25rem;"
+                               title="Buka artikel asli di {{ post.source_name }}">
+                                <span>Baca</span>
+                                <svg style="width:11px;height:11px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                            </a>
+                            <button type="button"
+                                    hx-delete="/partials/external-media/posts/{{ post.id }}"
+                                    hx-target="#ext-sync-feedback"
+                                    hx-swap="innerHTML"
+                                    hx-include="#ext-source-select, #ext-category-select, #ext-search-input, #ext-start-date, #ext-end-date, #ext-limit-select, #ext-sort-select"
+                                    hx-vals='{"page": {{ page }}}'
+                                    hx-confirm="Yakin ingin menghapus berita ini dari pemantauan media eksternal?"
+                                    style="padding:0.3rem 0.45rem;font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;transition:all 0.15s ease;"
+                                    title="Hapus berita (tidak relevan)">
+                                <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.416 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <!-- Empty State -->
+        <div style="padding:3rem 1.5rem;text-align:center;">
+            <div style="width:48px;height:48px;border-radius:12px;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;color:#94a3b8;margin:0 auto 0.75rem;">
+                <svg style="width:24px;height:24px;" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:600;color:#cbd5e1;margin:0;">
+                {% if search %}
+                Tidak ada liputan berita yang cocok dengan pencarian "{{ search }}".
+                {% elif start_date or end_date %}
+                Tidak ditemukan liputan berita untuk rentang tanggal yang dipilih.
+                {% else %}
+                Belum ada liputan berita media eksternal yang tercatat.
+                {% endif %}
+            </p>
+            <p style="font-size:11px;color:#64748b;margin:0.25rem 0 0;">
+                Coba sesuaikan kata kunci pencarian, filter tanggal, atau klik "Sinkronkan Data" di atas.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination Footer -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;padding-top:0.25rem;">
+        <span style="font-size:12px;color:#94a3b8;font-family:var(--font-mono);">
+            {% if total_count > 0 %}
+            Menampilkan <strong style="color:#f1f5f9;">{{ start_idx }}-{{ end_idx }}</strong> dari <strong style="color:#f1f5f9;">{{ total_count }}</strong> liputan (Halaman {{ page }}/{{ total_pages }})
+            {% else %}
+            0 liputan ditemukan
+            {% endif %}
+        </span>
+
+        {% if total_pages > 1 %}
+        <div style="display:flex;align-items:center;gap:0.35rem;">
+            <!-- Prev Button -->
+            <button type="button"
+                    {% if has_prev %}
+                    hx-get="/partials/external-media/posts?source_id={{ source_id }}&category={{ category }}&page={{ prev_page }}&limit={{ limit }}&sort_by={{ sort_by }}&search={{ search }}&start_date={{ start_date }}&end_date={{ end_date }}"
+                    hx-target="#external-media-posts-container"
+                    hx-swap="innerHTML"
+                    style="height:32px;padding:0 0.75rem;font-size:12px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;cursor:pointer;display:inline-flex;align-items:center;gap:0.35rem;"
+                    {% else %}
+                    disabled
+                    style="height:32px;padding:0 0.75rem;font-size:12px;border-radius:6px;background:#090d16;border:1px solid #1e293b;color:#475569;cursor:not-allowed;opacity:0.6;display:inline-flex;align-items:center;gap:0.35rem;"
+                    {% endif %}>
+                <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                <span>Sebelumnya</span>
+            </button>
+
+            <!-- Page Indicator -->
+            <span style="font-size:11px;font-family:var(--font-mono);padding:0 0.5rem;color:#cbd5e1;">{{ page }} / {{ total_pages }}</span>
+
+            <!-- Next Button -->
+            <button type="button"
+                    {% if has_next %}
+                    hx-get="/partials/external-media/posts?source_id={{ source_id }}&category={{ category }}&page={{ next_page }}&limit={{ limit }}&sort_by={{ sort_by }}&search={{ search }}&start_date={{ start_date }}&end_date={{ end_date }}"
+                    hx-target="#external-media-posts-container"
+                    hx-swap="innerHTML"
+                    style="height:32px;padding:0 0.75rem;font-size:12px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;cursor:pointer;display:inline-flex;align-items:center;gap:0.35rem;"
+                    {% else %}
+                    disabled
+                    style="height:32px;padding:0 0.75rem;font-size:12px;border-radius:6px;background:#090d16;border:1px solid #1e293b;color:#475569;cursor:not-allowed;opacity:0.6;display:inline-flex;align-items:center;gap:0.35rem;"
+                    {% endif %}>
+                <span>Berikutnya</span>
+                <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
