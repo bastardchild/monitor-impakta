@@ -3,6 +3,7 @@
 scripts/backfill_idea_jatim_2_years.py
 Script untuk melakukan backfill / scraping data liputan berita UNMER Malang dari
 portal Idea Jatim (https://ideajatim.id) selama 2 tahun ke belakang.
+Mendukung seluruh Custom Post Types: berita-malang, berita-batu, posts.
 """
 
 import asyncio
@@ -30,7 +31,6 @@ logger = logging.getLogger("backfill.idea_jatim")
 
 from app.db import batch, fetch_all
 
-IDEA_JATIM_API_URL = "https://ideajatim.id/wp-json/wp/v2/posts"
 IDEA_JATIM_BASE_WEB = "https://ideajatim.id"
 
 WP_HEADERS = {
@@ -42,6 +42,8 @@ WP_HEADERS = {
     "Accept": "application/json",
 }
 
+CPTS_TO_SCAN = ["berita-malang", "berita-batu", "posts"]
+
 
 def _clean_html_text(raw_html: Optional[str]) -> str:
     """Strip tags, clean zero-width characters, and unescape html entities."""
@@ -49,7 +51,6 @@ def _clean_html_text(raw_html: Optional[str]) -> str:
         return ""
     clean = re.sub(r"<[^>]+>", " ", str(raw_html))
     clean = html.unescape(clean)
-    # Remove zero-width spaces and normalize whitespace
     clean = clean.replace("\u200b", " ").replace("\ufeff", " ")
     return " ".join(clean.split()).strip()
 
@@ -105,7 +106,7 @@ async def _save_posts_batch(posts: List[Dict[str, Any]]) -> int:
 
 
 async def main():
-    logger.info("=== MEMULAI BACKFILL IDEA JATIM (2 TAHUN KE BELAKANG) ===")
+    logger.info("=== MEMULAI BACKFILL IDEA JATIM (2 TAHUN KE BELAKANG - SEMUA CPT) ===")
     
     # 2 tahun kebelakang (~730 hari)
     cutoff_date = (datetime.now(timezone.utc) - timedelta(days=730)).strftime("%Y-%m-%d")
@@ -120,113 +121,112 @@ async def main():
 
     all_posts_to_save: List[Dict[str, Any]] = []
     seen_ids = set()
-    page = 1
     per_page = 50
 
-    while True:
-        logger.info(f"Mengambil data halaman {page} (per_page={per_page})...")
-        url = f"{IDEA_JATIM_API_URL}?search=unmer&_embed=1&per_page={per_page}&page={page}&after={cutoff_iso}"
-        
-        req = urllib.request.Request(url, headers=WP_HEADERS)
-        try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                total_posts_header = resp.headers.get("X-WP-Total")
-                total_pages_header = resp.headers.get("X-WP-TotalPages")
-                items = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as he:
-            if he.code == 400:
-                logger.info(f"Halaman {page} di luar batas atau tidak ada data lagi (HTTP 400). Selesai.")
+    for cpt in CPTS_TO_SCAN:
+        logger.info(f"--- Memindai Custom Post Type: {cpt} ---")
+        page = 1
+        while True:
+            url = f"{IDEA_JATIM_BASE_WEB}/wp-json/wp/v2/{cpt}?search=unmer&_embed=1&per_page={per_page}&page={page}&after={cutoff_iso}"
+            req = urllib.request.Request(url, headers=WP_HEADERS)
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    total_posts_header = resp.headers.get("X-WP-Total")
+                    total_pages_header = resp.headers.get("X-WP-TotalPages")
+                    items = json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as he:
+                if he.code in (400, 404):
+                    logger.info(f"CPT {cpt} halaman {page} tidak ada artikel lagi / batas tercapai.")
+                    break
+                else:
+                    logger.error(f"HTTP Error {he.code} pada {cpt} halaman {page}: {he.reason}")
+                    break
+            except Exception as e:
+                logger.error(f"Error jaringan {cpt} halaman {page}: {e}")
                 break
-            else:
-                logger.error(f"HTTP Error {he.code} saat mengakses {url}: {he.reason}")
+
+            if not items or not isinstance(items, list):
                 break
-        except Exception as e:
-            logger.error(f"Error jaringan saat request halaman {page}: {e}")
-            break
 
-        if not items or not isinstance(items, list):
-            logger.info(f"Tidak ada artikel lagi di halaman {page}. Selesai.")
-            break
+            logger.info(f"[{cpt}] Halaman {page}: Berhasil menerima {len(items)} artikel (Total indikasi CPT: {total_posts_header}).")
 
-        logger.info(f"Halaman {page}: Berhasil menerima {len(items)} artikel (Total indikasi API: {total_posts_header} artikel, {total_pages_header} halaman).")
+            page_saved_count = 0
+            for it in items:
+                ext_id = str(it.get("id") or "").strip()
+                if not ext_id or ext_id in seen_ids:
+                    continue
+                seen_ids.add(ext_id)
 
-        page_saved_count = 0
-        for it in items:
-            ext_id = str(it.get("id") or "").strip()
-            if not ext_id or ext_id in seen_ids:
-                continue
-            seen_ids.add(ext_id)
+                raw_title = it.get("title", {}).get("rendered") if isinstance(it.get("title"), dict) else str(it.get("title") or "")
+                title = _clean_html_text(raw_title)
+                if not title:
+                    continue
 
-            raw_title = it.get("title", {}).get("rendered") if isinstance(it.get("title"), dict) else str(it.get("title") or "")
-            title = _clean_html_text(raw_title)
-            if not title:
-                continue
+                full_url = it.get("link") or f"{IDEA_JATIM_BASE_WEB}/?p={ext_id}"
 
-            full_url = it.get("link") or f"{IDEA_JATIM_BASE_WEB}/?p={ext_id}"
+                raw_excerpt = it.get("excerpt", {}).get("rendered") if isinstance(it.get("excerpt"), dict) else str(it.get("excerpt") or "")
+                excerpt = _clean_html_text(raw_excerpt)[:400]
 
-            raw_excerpt = it.get("excerpt", {}).get("rendered") if isinstance(it.get("excerpt"), dict) else str(it.get("excerpt") or "")
-            excerpt = _clean_html_text(raw_excerpt)[:400]
+                featured_img = ""
+                media_list = it.get("_embedded", {}).get("wp:featuredmedia", [])
+                if isinstance(media_list, list) and media_list and isinstance(media_list[0], dict):
+                    featured_img = media_list[0].get("source_url") or ""
 
-            featured_img = ""
-            media_list = it.get("_embedded", {}).get("wp:featuredmedia", [])
-            if isinstance(media_list, list) and media_list and isinstance(media_list[0], dict):
-                featured_img = media_list[0].get("source_url") or ""
-
-            cat_name = "Umum"
-            terms_groups = it.get("_embedded", {}).get("wp:term", [])
-            if isinstance(terms_groups, list):
-                for group in terms_groups:
-                    if isinstance(group, list):
-                        for term in group:
-                            tname = (term.get("name") or "").strip()
-                            if tname and tname.lower() not in ("idea jatim", "headline", "unmer", "unmer malang"):
-                                cat_name = tname
+                cat_name = "Umum"
+                terms_groups = it.get("_embedded", {}).get("wp:term", [])
+                if isinstance(terms_groups, list):
+                    for group in terms_groups:
+                        if isinstance(group, list):
+                            for term in group:
+                                tname = (term.get("name") or "").strip()
+                                if tname and tname.lower() not in ("idea jatim", "headline", "unmer", "unmer malang"):
+                                    cat_name = tname
+                                    break
+                            if cat_name != "Umum":
                                 break
-                        if cat_name != "Umum":
-                            break
 
-            author = "Redaksi Idea Jatim"
-            authors = it.get("_embedded", {}).get("author", [])
-            if isinstance(authors, list) and authors and isinstance(authors[0], dict):
-                aname = (authors[0].get("name") or "").strip()
-                if aname:
-                    author = aname
+                author = "Redaksi Idea Jatim"
+                authors = it.get("_embedded", {}).get("author", [])
+                if isinstance(authors, list) and authors and isinstance(authors[0], dict):
+                    aname = (authors[0].get("name") or "").strip()
+                    if aname:
+                        author = aname
 
-            pub_raw = it.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                pub_raw = it.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-            post_id = f"idea_jatim_{ext_id}"
-            if post_id in deleted_ids:
-                continue
+                post_id = f"idea_jatim_{ext_id}"
+                if post_id in deleted_ids:
+                    continue
 
-            all_posts_to_save.append({
-                "id": post_id,
-                "source_id": "idea_jatim",
-                "source_name": "Idea Jatim",
-                "external_id": ext_id,
-                "title": title,
-                "url": full_url,
-                "excerpt": excerpt,
-                "featured_image_url": featured_img,
-                "category_name": cat_name,
-                "author_name": author,
-                "city": "Malang",
-                "pageviews": 0,
-                "published_at": pub_raw,
-                "published_date": pub_date,
-                "synced_at": now_iso
-            })
-            page_saved_count += 1
+                all_posts_to_save.append({
+                    "id": post_id,
+                    "source_id": "idea_jatim",
+                    "source_name": "Idea Jatim",
+                    "external_id": ext_id,
+                    "title": title,
+                    "url": full_url,
+                    "excerpt": excerpt,
+                    "featured_image_url": featured_img,
+                    "category_name": cat_name,
+                    "author_name": author,
+                    "city": "Malang",
+                    "pageviews": 0,
+                    "published_at": pub_raw,
+                    "published_date": pub_date,
+                    "synced_at": now_iso
+                })
+                page_saved_count += 1
 
-        logger.info(f"Diproses {page_saved_count} artikel valid dari halaman {page}.")
+            logger.info(f"[{cpt}] Diproses {page_saved_count} artikel unik baru dari halaman {page}.")
 
-        if total_pages_header and page >= int(total_pages_header):
-            break
+            if total_pages_header and page >= int(total_pages_header):
+                break
 
-        page += 1
-        await asyncio.sleep(0.5)
+            page += 1
+            await asyncio.sleep(0.4)
 
-    logger.info(f"Total artikel Idea Jatim yang siap disimpan: {len(all_posts_to_save)} artikel.")
+    logger.info(f"Total artikel Idea Jatim (semua CPT) yang siap disimpan: {len(all_posts_to_save)} artikel.")
 
     if all_posts_to_save:
         chunk_size = 50

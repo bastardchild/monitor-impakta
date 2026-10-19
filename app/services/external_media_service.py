@@ -478,14 +478,17 @@ async def sync_malang_posco_media(limit: int = 5, max_pages: int = 1, after_date
 async def sync_idea_jatim(limit: int = 5, max_pages: int = 1, after_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Fetch latest UNMER Malang news from Idea Jatim (WordPress REST API) and upsert into external_news_posts.
-    Fast REST API search, immediately stops and disconnects once quota is reached.
+    Queries Custom Post Types (berita-malang, berita-batu, and posts) where regional news are filed.
     """
     total_fetched = 0
     now_iso = datetime.now(timezone.utc).isoformat()
     deleted_ids = await _get_deleted_post_ids()
+    seen_ids = set()
     posts_to_save: List[Dict[str, Any]] = []
 
-    def _fetch_idea_page(page: int, per_page: int) -> Optional[List[Dict[str, Any]]]:
+    cpts = ["berita-malang", "berita-batu", "posts"]
+
+    def _fetch_idea_cpt(cpt: str, page: int, per_page: int) -> Optional[List[Dict[str, Any]]]:
         params = [
             "search=unmer",
             "_embed=1",
@@ -494,100 +497,104 @@ async def sync_idea_jatim(limit: int = 5, max_pages: int = 1, after_date: Option
         ]
         if after_date:
             params.append(f"after={after_date}T00:00:00")
-        url = f"{IDEA_JATIM_API_URL}?{'&'.join(params)}"
+        url = f"{IDEA_JATIM_BASE_WEB}/wp-json/wp/v2/{cpt}?{'&'.join(params)}"
         req = urllib.request.Request(url, headers=WP_HEADERS)
         try:
             with urllib.request.urlopen(req, timeout=12) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as he:
-            if he.code == 400:  # Page number exceeds available pages
+            if he.code in (400, 404):  # Out of bounds or CPT not found
                 return []
             raise
         except Exception as e:
-            logger.warning(f"Error fetching Idea Jatim page {page}: {e}")
+            logger.warning(f"Error fetching Idea Jatim CPT {cpt} page {page}: {e}")
             return None
 
     try:
         per_page = min(max(limit, 5), 50)
-        for page in range(1, max_pages + 1):
-            items = await asyncio.to_thread(_fetch_idea_page, page, per_page)
-            if not items:
+        for cpt in cpts:
+            if len(posts_to_save) >= limit:
                 break
-
-            for it in items:
-                ext_id = str(it.get("id") or "").strip()
-                if not ext_id:
-                    continue
-
-                total_fetched += 1
-                raw_title = it.get("title", {}).get("rendered") if isinstance(it.get("title"), dict) else str(it.get("title") or "")
-                title = _clean_html_text(raw_title)
-                if not title:
-                    continue
-
-                full_url = it.get("link") or f"{IDEA_JATIM_BASE_WEB}/?p={ext_id}"
-
-                raw_excerpt = it.get("excerpt", {}).get("rendered") if isinstance(it.get("excerpt"), dict) else str(it.get("excerpt") or "")
-                excerpt = _clean_html_text(raw_excerpt)[:400]
-
-                featured_img = ""
-                media_list = it.get("_embedded", {}).get("wp:featuredmedia", [])
-                if isinstance(media_list, list) and media_list and isinstance(media_list[0], dict):
-                    featured_img = media_list[0].get("source_url") or ""
-
-                cat_name = "Umum"
-                terms_groups = it.get("_embedded", {}).get("wp:term", [])
-                if isinstance(terms_groups, list):
-                    for group in terms_groups:
-                        if isinstance(group, list):
-                            for term in group:
-                                tname = (term.get("name") or "").strip()
-                                if tname and tname.lower() not in ("idea jatim", "headline", "unmer", "unmer malang"):
-                                    cat_name = tname
-                                    break
-                            if cat_name != "Umum":
-                                break
-
-                author = "Redaksi Idea Jatim"
-                authors = it.get("_embedded", {}).get("author", [])
-                if isinstance(authors, list) and authors and isinstance(authors[0], dict):
-                    aname = (authors[0].get("name") or "").strip()
-                    if aname:
-                        author = aname
-
-                pub_raw = it.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-                if after_date and pub_date < after_date:
+            for page in range(1, max_pages + 1):
+                items = await asyncio.to_thread(_fetch_idea_cpt, cpt, page, per_page)
+                if not items:
                     break
 
-                post_id = f"idea_jatim_{ext_id}"
-                if post_id in deleted_ids:
-                    continue
+                for it in items:
+                    ext_id = str(it.get("id") or "").strip()
+                    if not ext_id or ext_id in seen_ids:
+                        continue
+                    seen_ids.add(ext_id)
 
-                posts_to_save.append({
-                    "id": post_id,
-                    "source_id": "idea_jatim",
-                    "source_name": "Idea Jatim",
-                    "external_id": ext_id,
-                    "title": title,
-                    "url": full_url,
-                    "excerpt": excerpt,
-                    "featured_image_url": featured_img,
-                    "category_name": cat_name,
-                    "author_name": author,
-                    "city": "Malang",
-                    "pageviews": 0,
-                    "published_at": pub_raw,
-                    "published_date": pub_date,
-                    "synced_at": now_iso
-                })
+                    total_fetched += 1
+                    raw_title = it.get("title", {}).get("rendered") if isinstance(it.get("title"), dict) else str(it.get("title") or "")
+                    title = _clean_html_text(raw_title)
+                    if not title:
+                        continue
+
+                    full_url = it.get("link") or f"{IDEA_JATIM_BASE_WEB}/?p={ext_id}"
+
+                    raw_excerpt = it.get("excerpt", {}).get("rendered") if isinstance(it.get("excerpt"), dict) else str(it.get("excerpt") or "")
+                    excerpt = _clean_html_text(raw_excerpt)[:400]
+
+                    featured_img = ""
+                    media_list = it.get("_embedded", {}).get("wp:featuredmedia", [])
+                    if isinstance(media_list, list) and media_list and isinstance(media_list[0], dict):
+                        featured_img = media_list[0].get("source_url") or ""
+
+                    cat_name = "Umum"
+                    terms_groups = it.get("_embedded", {}).get("wp:term", [])
+                    if isinstance(terms_groups, list):
+                        for group in terms_groups:
+                            if isinstance(group, list):
+                                for term in group:
+                                    tname = (term.get("name") or "").strip()
+                                    if tname and tname.lower() not in ("idea jatim", "headline", "unmer", "unmer malang"):
+                                        cat_name = tname
+                                        break
+                                if cat_name != "Umum":
+                                    break
+
+                    author = "Redaksi Idea Jatim"
+                    authors = it.get("_embedded", {}).get("author", [])
+                    if isinstance(authors, list) and authors and isinstance(authors[0], dict):
+                        aname = (authors[0].get("name") or "").strip()
+                        if aname:
+                            author = aname
+
+                    pub_raw = it.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                    pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+                    if after_date and pub_date < after_date:
+                        break
+
+                    post_id = f"idea_jatim_{ext_id}"
+                    if post_id in deleted_ids:
+                        continue
+
+                    posts_to_save.append({
+                        "id": post_id,
+                        "source_id": "idea_jatim",
+                        "source_name": "Idea Jatim",
+                        "external_id": ext_id,
+                        "title": title,
+                        "url": full_url,
+                        "excerpt": excerpt,
+                        "featured_image_url": featured_img,
+                        "category_name": cat_name,
+                        "author_name": author,
+                        "city": "Malang",
+                        "pageviews": 0,
+                        "published_at": pub_raw,
+                        "published_date": pub_date,
+                        "synced_at": now_iso
+                    })
+
+                    if len(posts_to_save) >= limit:
+                        break
 
                 if len(posts_to_save) >= limit:
                     break
-
-            if len(posts_to_save) >= limit:
-                break
 
         total_upserted = await _save_posts_batch(posts_to_save)
 
