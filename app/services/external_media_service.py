@@ -1,6 +1,6 @@
 import asyncio
 import calendar
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import html
 import json
 import logging
@@ -29,6 +29,12 @@ TIMES_API_URL = "https://timesindonesia.co.id/api/news/all"
 TIMES_API_KEY = "VT926Xevq9juBMyR2Iddjm5OZRLP"
 TIMES_BASE_WEB = "https://timesindonesia.co.id"
 
+MALANG_POSCO_API_URL = "https://malangposcomedia.id/wp-json/wp/v2/posts"
+MALANG_POSCO_BASE_WEB = "https://malangposcomedia.id"
+
+IDEA_JATIM_API_URL = "https://ideajatim.id/wp-json/wp/v2/posts"
+IDEA_JATIM_BASE_WEB = "https://ideajatim.id"
+
 DEFAULT_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -37,6 +43,15 @@ DEFAULT_HEADERS = {
     ),
     "Accept": "application/json",
     "x-api-key": TIMES_API_KEY,
+}
+
+WP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json",
 }
 
 
@@ -319,16 +334,304 @@ async def sync_radar_malang(limit: int = 5, after_date: Optional[str] = None) ->
         }
 
 
-async def sync_all_external_media(limit_total: int = 10, after_date: Optional[str] = None) -> Dict[str, Any]:
+async def sync_malang_posco_media(limit: int = 5, max_pages: int = 1, after_date: Optional[str] = None) -> Dict[str, Any]:
     """
-    Sync external media sources (TIMES Indonesia and Radar Malang) concurrently.
-    Pulls 10 latest articles in total and immediately disconnects.
+    Fetch latest UNMER Malang news from Malang Posco Media (WordPress REST API) and upsert into external_news_posts.
+    Fast REST API search, immediately stops and disconnects once quota is reached.
     """
-    quota_each = max(1, limit_total // 2)
+    total_fetched = 0
+    now_iso = datetime.now(timezone.utc).isoformat()
+    deleted_ids = await _get_deleted_post_ids()
+    posts_to_save: List[Dict[str, Any]] = []
 
-    res_times, res_radar = await asyncio.gather(
+    def _fetch_posco_page(page: int, per_page: int) -> Optional[List[Dict[str, Any]]]:
+        params = [
+            "search=unmer",
+            "_embed=1",
+            f"per_page={per_page}",
+            f"page={page}"
+        ]
+        if after_date:
+            params.append(f"after={after_date}T00:00:00")
+        url = f"{MALANG_POSCO_API_URL}?{'&'.join(params)}"
+        req = urllib.request.Request(url, headers=WP_HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as he:
+            if he.code == 400:  # Page number exceeds available pages
+                return []
+            raise
+        except Exception as e:
+            logger.warning(f"Error fetching Malang Posco Media page {page}: {e}")
+            return None
+
+    try:
+        per_page = min(max(limit, 5), 50)
+        for page in range(1, max_pages + 1):
+            items = await asyncio.to_thread(_fetch_posco_page, page, per_page)
+            if not items:
+                break
+
+            for it in items:
+                ext_id = str(it.get("id") or "").strip()
+                if not ext_id:
+                    continue
+
+                total_fetched += 1
+                raw_title = it.get("title", {}).get("rendered") if isinstance(it.get("title"), dict) else str(it.get("title") or "")
+                title = _clean_html_text(raw_title)
+                if not title:
+                    continue
+
+                full_url = it.get("link") or f"{MALANG_POSCO_BASE_WEB}/?p={ext_id}"
+
+                raw_excerpt = it.get("excerpt", {}).get("rendered") if isinstance(it.get("excerpt"), dict) else str(it.get("excerpt") or "")
+                excerpt = _clean_html_text(raw_excerpt)[:400]
+
+                featured_img = ""
+                media_list = it.get("_embedded", {}).get("wp:featuredmedia", [])
+                if isinstance(media_list, list) and media_list and isinstance(media_list[0], dict):
+                    featured_img = media_list[0].get("source_url") or ""
+
+                cat_name = "Umum"
+                terms_groups = it.get("_embedded", {}).get("wp:term", [])
+                if isinstance(terms_groups, list):
+                    for group in terms_groups:
+                        if isinstance(group, list):
+                            for term in group:
+                                tname = (term.get("name") or "").strip()
+                                if tname and tname.lower() not in ("malang posco media", "headline", "unmer", "unmer malang"):
+                                    cat_name = tname
+                                    break
+                            if cat_name != "Umum":
+                                break
+
+                author = "Redaksi Malang Posco Media"
+                authors = it.get("_embedded", {}).get("author", [])
+                if isinstance(authors, list) and authors and isinstance(authors[0], dict):
+                    aname = (authors[0].get("name") or "").strip()
+                    if aname:
+                        author = aname
+
+                pub_raw = it.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+                if after_date and pub_date < after_date:
+                    break
+
+                post_id = f"malang_posco_{ext_id}"
+                if post_id in deleted_ids:
+                    continue
+
+                posts_to_save.append({
+                    "id": post_id,
+                    "source_id": "malang_posco",
+                    "source_name": "Malang Posco Media",
+                    "external_id": ext_id,
+                    "title": title,
+                    "url": full_url,
+                    "excerpt": excerpt,
+                    "featured_image_url": featured_img,
+                    "category_name": cat_name,
+                    "author_name": author,
+                    "city": "Malang",
+                    "pageviews": 0,
+                    "published_at": pub_raw,
+                    "published_date": pub_date,
+                    "synced_at": now_iso
+                })
+
+                if len(posts_to_save) >= limit:
+                    break
+
+            if len(posts_to_save) >= limit:
+                break
+
+        total_upserted = await _save_posts_batch(posts_to_save)
+
+        return {
+            "status": "success",
+            "source": "malang_posco",
+            "total_fetched": total_fetched,
+            "total_upserted": total_upserted,
+            "synced_at": now_iso
+        }
+    except Exception as e:
+        logger.error(f"Error syncing Malang Posco Media news: {e}", exc_info=True)
+        await log_system_error(
+            category=ErrorCategory.INGEST,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message=f"Gagal sinkronisasi Malang Posco Media: {str(e)}",
+            exc=e,
+            platform="malang_posco"
+        )
+        return {
+            "status": "error",
+            "source": "malang_posco",
+            "error": str(e),
+            "total_fetched": total_fetched,
+            "total_upserted": 0
+        }
+
+
+async def sync_idea_jatim(limit: int = 5, max_pages: int = 1, after_date: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Fetch latest UNMER Malang news from Idea Jatim (WordPress REST API) and upsert into external_news_posts.
+    Fast REST API search, immediately stops and disconnects once quota is reached.
+    """
+    total_fetched = 0
+    now_iso = datetime.now(timezone.utc).isoformat()
+    deleted_ids = await _get_deleted_post_ids()
+    posts_to_save: List[Dict[str, Any]] = []
+
+    def _fetch_idea_page(page: int, per_page: int) -> Optional[List[Dict[str, Any]]]:
+        params = [
+            "search=unmer",
+            "_embed=1",
+            f"per_page={per_page}",
+            f"page={page}"
+        ]
+        if after_date:
+            params.append(f"after={after_date}T00:00:00")
+        url = f"{IDEA_JATIM_API_URL}?{'&'.join(params)}"
+        req = urllib.request.Request(url, headers=WP_HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as he:
+            if he.code == 400:  # Page number exceeds available pages
+                return []
+            raise
+        except Exception as e:
+            logger.warning(f"Error fetching Idea Jatim page {page}: {e}")
+            return None
+
+    try:
+        per_page = min(max(limit, 5), 50)
+        for page in range(1, max_pages + 1):
+            items = await asyncio.to_thread(_fetch_idea_page, page, per_page)
+            if not items:
+                break
+
+            for it in items:
+                ext_id = str(it.get("id") or "").strip()
+                if not ext_id:
+                    continue
+
+                total_fetched += 1
+                raw_title = it.get("title", {}).get("rendered") if isinstance(it.get("title"), dict) else str(it.get("title") or "")
+                title = _clean_html_text(raw_title)
+                if not title:
+                    continue
+
+                full_url = it.get("link") or f"{IDEA_JATIM_BASE_WEB}/?p={ext_id}"
+
+                raw_excerpt = it.get("excerpt", {}).get("rendered") if isinstance(it.get("excerpt"), dict) else str(it.get("excerpt") or "")
+                excerpt = _clean_html_text(raw_excerpt)[:400]
+
+                featured_img = ""
+                media_list = it.get("_embedded", {}).get("wp:featuredmedia", [])
+                if isinstance(media_list, list) and media_list and isinstance(media_list[0], dict):
+                    featured_img = media_list[0].get("source_url") or ""
+
+                cat_name = "Umum"
+                terms_groups = it.get("_embedded", {}).get("wp:term", [])
+                if isinstance(terms_groups, list):
+                    for group in terms_groups:
+                        if isinstance(group, list):
+                            for term in group:
+                                tname = (term.get("name") or "").strip()
+                                if tname and tname.lower() not in ("idea jatim", "headline", "unmer", "unmer malang"):
+                                    cat_name = tname
+                                    break
+                            if cat_name != "Umum":
+                                break
+
+                author = "Redaksi Idea Jatim"
+                authors = it.get("_embedded", {}).get("author", [])
+                if isinstance(authors, list) and authors and isinstance(authors[0], dict):
+                    aname = (authors[0].get("name") or "").strip()
+                    if aname:
+                        author = aname
+
+                pub_raw = it.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+                if after_date and pub_date < after_date:
+                    break
+
+                post_id = f"idea_jatim_{ext_id}"
+                if post_id in deleted_ids:
+                    continue
+
+                posts_to_save.append({
+                    "id": post_id,
+                    "source_id": "idea_jatim",
+                    "source_name": "Idea Jatim",
+                    "external_id": ext_id,
+                    "title": title,
+                    "url": full_url,
+                    "excerpt": excerpt,
+                    "featured_image_url": featured_img,
+                    "category_name": cat_name,
+                    "author_name": author,
+                    "city": "Malang",
+                    "pageviews": 0,
+                    "published_at": pub_raw,
+                    "published_date": pub_date,
+                    "synced_at": now_iso
+                })
+
+                if len(posts_to_save) >= limit:
+                    break
+
+            if len(posts_to_save) >= limit:
+                break
+
+        total_upserted = await _save_posts_batch(posts_to_save)
+
+        return {
+            "status": "success",
+            "source": "idea_jatim",
+            "total_fetched": total_fetched,
+            "total_upserted": total_upserted,
+            "synced_at": now_iso
+        }
+    except Exception as e:
+        logger.error(f"Error syncing Idea Jatim news: {e}", exc_info=True)
+        await log_system_error(
+            category=ErrorCategory.INGEST,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message=f"Gagal sinkronisasi Idea Jatim: {str(e)}",
+            exc=e,
+            platform="idea_jatim"
+        )
+        return {
+            "status": "error",
+            "source": "idea_jatim",
+            "error": str(e),
+            "total_fetched": total_fetched,
+            "total_upserted": 0
+        }
+
+
+async def sync_all_external_media(limit_total: int = 16, after_date: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Sync external media sources (TIMES Indonesia, Radar Malang, Malang Posco Media, Idea Jatim) concurrently.
+    Defaulting to 1 month ago (30 days) to keep manual sync fast and efficient.
+    """
+    if after_date is None:
+        # User requirement: tombol sinkron cukup 1 bulan terakhir
+        after_date = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    quota_each = max(1, limit_total // 4)
+
+    res_times, res_radar, res_posco, res_idea = await asyncio.gather(
         sync_times_indonesia(limit=quota_each, after_date=after_date),
-        sync_radar_malang(limit=quota_each, after_date=after_date)
+        sync_radar_malang(limit=quota_each, after_date=after_date),
+        sync_malang_posco_media(limit=quota_each, after_date=after_date),
+        sync_idea_jatim(limit=quota_each, after_date=after_date)
     )
 
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -336,7 +639,14 @@ async def sync_all_external_media(limit_total: int = 10, after_date: Optional[st
         "status": "success",
         "times_indonesia": res_times,
         "radar_malang": res_radar,
-        "total_upserted": (res_times.get("total_upserted", 0) or 0) + (res_radar.get("total_upserted", 0) or 0),
+        "malang_posco": res_posco,
+        "idea_jatim": res_idea,
+        "total_upserted": (
+            (res_times.get("total_upserted", 0) or 0) +
+            (res_radar.get("total_upserted", 0) or 0) +
+            (res_posco.get("total_upserted", 0) or 0) +
+            (res_idea.get("total_upserted", 0) or 0)
+        ),
         "synced_at": now_iso
     }
 
