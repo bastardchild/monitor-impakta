@@ -11,8 +11,13 @@
     <!-- Platform Header & Status Profile -->
     <article class="dashboard-card" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin:0;">
         <div style="display:flex;align-items:center;gap:0.85rem;">
-            {% if account and account.avatar_url %}
-            <img src="{{ account.avatar_url }}" alt="{{ platform_name }}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #1e293b;">
+            {% if account and (account.avatar_url or account.status == 'connected') %}
+            <img src="/api/media/avatar/{{ platform_id }}" 
+                 alt="{{ platform_name }}" 
+                 loading="lazy" 
+                 referrerpolicy="no-referrer"
+                 onerror="this.onerror=null; if('{{ account.avatar_url }}') this.src='{{ account.avatar_url }}';"
+                 style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #1e293b;">
             {% else %}
             <div style="width:48px;height:48px;border-radius:12px;background:#0f172a;border:1px solid #1e293b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 {% if platform_id == 'youtube' %}

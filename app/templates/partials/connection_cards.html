@@ -6,8 +6,13 @@
         <div style="display:flex;flex-direction:column;gap:1rem;">
             <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:0.75rem;">
-                    {% if p.avatar_url %}
-                    <img src="{{ p.avatar_url }}" alt="{{ p.name }}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;border:1px solid #1e293b;">
+                    {% if p.avatar_url or p.status == 'connected' %}
+                    <img src="/api/media/avatar/{{ plat_id }}" 
+                         alt="{{ p.name }}" 
+                         loading="lazy" 
+                         referrerpolicy="no-referrer"
+                         onerror="this.onerror=null; if('{{ p.avatar_url }}') this.src='{{ p.avatar_url }}';"
+                         style="width:40px;height:40px;border-radius:10px;object-fit:cover;border:1px solid #1e293b;">
                     {% else %}
                     <div style="width:40px;height:40px;border-radius:10px;background:#0f172a;border:1px solid #1e293b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         {% if plat_id == 'youtube' %}

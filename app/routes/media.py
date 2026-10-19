@@ -135,3 +135,106 @@ async def get_media_thumbnail(post_id: str):
         media_type="image/svg+xml",
         headers={"Cache-Control": "public, max-age=3600"}
     )
+
+
+@router.get("/avatar/{platform_id}")
+async def get_platform_avatar(platform_id: str):
+    """
+    Serve cached profile picture (avatar) for a platform (tiktok, instagram, youtube).
+    1. If cached on disk -> Return FileResponse (< 3ms).
+    2. If not on disk -> Fetch fresh avatar from platform API or DB, save to disk, and return.
+    3. Fallback -> Return SVG icon.
+    """
+    plat = platform_id.lower().strip()
+    file_path = os.path.join(CACHE_DIR, f"avatar_{plat}.jpg")
+
+    # 1. Check local disk cache
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 100:
+        return FileResponse(
+            file_path,
+            media_type="image/jpeg",
+            headers={
+                "Cache-Control": "public, max-age=2592000, immutable",
+                "Access-Control-Allow-Origin": "*",
+            }
+        )
+
+    image_bytes = None
+
+    # 2. Try fetching fresh avatar from platform API
+    if plat == "tiktok":
+        try:
+            creds = await get_valid_credentials("tiktok")
+            token = creds.get("access_token")
+            if token:
+                u_info = "https://open.tiktokapis.com/v2/user/info/?fields=avatar_url,avatar_url_100,avatar_large_url"
+                async with aiohttp.ClientSession() as s:
+                    async with s.get(u_info, headers={"Authorization": f"Bearer {token}"}, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                        if r.status == 200:
+                            d = await r.json()
+                            user = d.get("data", {}).get("user", {})
+                            fresh_url = user.get("avatar_large_url") or user.get("avatar_url") or user.get("avatar_url_100")
+                            if fresh_url:
+                                async with s.get(fresh_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=aiohttp.ClientTimeout(total=8)) as img_r:
+                                    if img_r.status == 200:
+                                        image_bytes = await img_r.read()
+                                        await execute("UPDATE connected_accounts SET avatar_url = ? WHERE platform_id = 'tiktok'", [fresh_url])
+        except Exception as e:
+            logger.warning(f"On-demand TikTok avatar refresh failed: {e}")
+
+    elif plat == "instagram":
+        try:
+            creds = await get_valid_credentials("instagram")
+            token = creds.get("access_token")
+            account_id = creds.get("account_id")
+            if token and account_id:
+                graph_url = f"https://graph.facebook.com/v21.0/{account_id}?fields=profile_picture_url&access_token={token}"
+                async with aiohttp.ClientSession() as s:
+                    async with s.get(graph_url, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                        if r.status == 200:
+                            d = await r.json()
+                            fresh_url = d.get("profile_picture_url")
+                            if fresh_url:
+                                async with s.get(fresh_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=aiohttp.ClientTimeout(total=8)) as img_r:
+                                    if img_r.status == 200:
+                                        image_bytes = await img_r.read()
+                                        await execute("UPDATE connected_accounts SET avatar_url = ? WHERE platform_id = 'instagram'", [fresh_url])
+        except Exception as e:
+            logger.warning(f"On-demand Instagram avatar refresh failed: {e}")
+
+    elif plat == "youtube":
+        try:
+            res = await execute("SELECT avatar_url FROM connected_accounts WHERE platform_id = 'youtube'")
+            if res.rows and res.rows[0][0]:
+                y_url = str(res.rows[0][0])
+                async with aiohttp.ClientSession() as s:
+                    async with s.get(y_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=aiohttp.ClientTimeout(total=8)) as img_r:
+                        if img_r.status == 200:
+                            image_bytes = await img_r.read()
+        except Exception as e:
+            logger.warning(f"On-demand YouTube avatar fetch failed: {e}")
+
+    # 3. Save to disk if successfully retrieved
+    if image_bytes and len(image_bytes) > 100:
+        try:
+            with open(file_path, "wb") as f:
+                f.write(image_bytes)
+            return Response(
+                content=image_bytes,
+                media_type="image/jpeg",
+                headers={
+                    "Cache-Control": "public, max-age=2592000, immutable",
+                    "Access-Control-Allow-Origin": "*",
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to write avatar file {file_path}: {e}")
+            return Response(content=image_bytes, media_type="image/jpeg")
+
+    # 4. Fallback SVG icon
+    return Response(
+        content=FALLBACK_SVG,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=3600"}
+    )
+
