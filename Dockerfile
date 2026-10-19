@@ -25,12 +25,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN python -m venv /opt/venv
 
-COPY requirements.txt /tmp/requirements.txt
-COPY requirements-dev.txt /tmp/requirements-dev.txt
+WORKDIR /build
+COPY pyproject.toml ./
 
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /tmp/requirements.txt && \
-    pip install --no-cache-dir -r /tmp/requirements-dev.txt
+    python -c "import tomllib; f = open('pyproject.toml', 'rb'); p = tomllib.load(f); deps = p['project']['dependencies'] + p['project'].get('optional-dependencies', {}).get('dev', []); open('/tmp/requirements.txt', 'w').write('\n'.join(deps))" && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
 
 # --- Stage 3: Runtime (Production) ---
 FROM base AS runtime

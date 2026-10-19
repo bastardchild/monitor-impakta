@@ -182,7 +182,7 @@ async def get_recent_error_logs(
     for r in rows:
         try:
             dt = datetime.fromisoformat(r["created_at"]).astimezone(tz)
-            r["created_at_formatted"] = dt.strftime("%d/%m/%Y, %H:%M:%S WIB")
+            r["created_at_formatted"] = dt.strftime("%d-%m-%Y, %H:%M:%S WIB")
         except Exception:
             r["created_at_formatted"] = r["created_at"]
 

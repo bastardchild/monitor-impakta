@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import aiohttp
 from app.db import execute, fetch_all, fetch_one
@@ -11,13 +11,14 @@ from app.services.token_service import get_valid_credentials
 logger = logging.getLogger(__name__)
 
 
-async def sync_youtube_videos(since_year: int = 2024) -> Dict[str, Any]:
+async def sync_youtube_videos(days: int = 7) -> Dict[str, Any]:
     """
-    Fetch all YouTube videos from the connected channel since a given year (default: 2024)
+    Fetch recent YouTube videos from the connected channel for the last N days (default: 7 days)
     and upsert them along with their statistics into Turso database.
     """
     start_time = time.time()
-    since_iso = f"{since_year}-01-01T00:00:00Z"
+    since_dt = datetime.now(timezone.utc) - timedelta(days=days)
+    since_iso = since_dt.strftime("%Y-%m-%dT00:00:00Z")
     today_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     try:
@@ -174,23 +175,7 @@ async def sync_youtube_videos(since_year: int = 2024) -> Dict[str, Any]:
                         [post_id, "youtube", vid, title, url, thumb_url, "video", pub_at, streamed_at, privacy]
                     )
 
-                    # Upsert post daily metrics for publish date
-                    if pub_at and len(pub_at) >= 10:
-                        pub_date = pub_at[:10]
-                        await execute(
-                            """
-                            INSERT INTO post_daily_metrics (
-                                post_id, date, views, likes, comments, shares, saves, avg_watch_sec
-                            ) VALUES (?, ?, ?, ?, ?, 0, 0, 0.0)
-                            ON CONFLICT(post_id, date) DO UPDATE SET
-                                views = excluded.views,
-                                likes = excluded.likes,
-                                comments = excluded.comments
-                            """,
-                            [post_id, pub_date, v_views, v_likes, v_comments]
-                        )
-
-                    # Upsert post daily metrics for today snapshot
+                    # Upsert post daily metrics snapshot for today
                     await execute(
                         """
                         INSERT INTO post_daily_metrics (
@@ -215,8 +200,11 @@ async def sync_youtube_videos(since_year: int = 2024) -> Dict[str, Any]:
             INSERT INTO ingest_logs (id, source, status, rows_upserted, error, created_at)
             VALUES (?, ?, ?, ?, NULL, ?)
             """,
-            [f"yt_{int(time.time())}", f"youtube_sync_from_{since_year}", "success", total_upserted, datetime.now(timezone.utc).isoformat()]
+            [f"yt_{int(time.time())}", f"youtube_sync_last_{days}d", "success", total_upserted, datetime.now(timezone.utc).isoformat()]
         )
+        # Invalidate KPI cache agar dashboard segera memuat data terbaru
+        from app.services.kpi_service import invalidate_kpi_cache
+        invalidate_kpi_cache()
 
         return {
             "status": "success",

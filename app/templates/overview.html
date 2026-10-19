@@ -97,7 +97,7 @@
     <!-- KPI Cards Section (HTMX loaded) -->
     <div id="kpi-cards-container"
          hx-get="/partials/kpi-cards?range={{ range or '30d' }}&platform=all{% if start and end %}&start={{ start }}&end={{ end }}{% endif %}"
-         hx-trigger="load, every 300s"
+         hx-trigger="load, refreshData from:body"
          hx-swap="innerHTML">
         <!-- Skeleton loading placeholder -->
         <div class="kpi-grid kpi-grid-5">
@@ -112,7 +112,7 @@
     <!-- Trend Chart Section (HTMX loaded) -->
     <div id="trend-chart-container"
          hx-get="/partials/trend-chart?range={{ range or '30d' }}&platform=all{% if start and end %}&start={{ start }}&end={{ end }}{% endif %}"
-         hx-trigger="load, every 300s"
+         hx-trigger="load, refreshData from:body"
          hx-swap="innerHTML">
         <div class="dashboard-card" style="height:320px;opacity:0.4;"></div>
     </div>
@@ -120,7 +120,7 @@
     <!-- Social Media Analytic Insight: Tone & Sentimen (HTMX loaded) -->
     <div id="sentiment-insight-container"
          hx-get="/partials/sentiment-insight?range={{ range or '30d' }}&platform=all{% if start and end %}&start={{ start }}&end={{ end }}{% endif %}"
-         hx-trigger="load, every 300s"
+         hx-trigger="load, refreshData from:body"
          hx-swap="innerHTML">
         <div class="dashboard-card" style="height:260px;opacity:0.4;"></div>
     </div>
@@ -133,7 +133,7 @@
         </div>
         <div id="top-posts-container"
              hx-get="/partials/top-posts?range={{ range or '30d' }}&platform=all"
-             hx-trigger="load, every 300s"
+             hx-trigger="load, refreshData from:body"
              hx-swap="innerHTML">
             <div class="dashboard-card" style="height:240px;opacity:0.4;"></div>
         </div>

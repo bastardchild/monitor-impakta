@@ -10,9 +10,10 @@ import urllib.parse
 import uuid
 import re
 
-from app.db import execute, fetch_all, fetch_one
+from app.db import batch, execute, fetch_all, fetch_one
 from app.services.error_logger import ErrorCategory, ErrorCode, log_system_error
 from app.services.kpi_service import format_number_id, format_date_dmy
+import libsql_client
 
 logger = logging.getLogger("kpi-sosmed.external_media")
 
@@ -48,31 +49,61 @@ def _clean_html_text(raw_html: Optional[str]) -> str:
     return " ".join(clean.split()).strip()
 
 
-async def sync_times_indonesia(limit: int = 50, max_pages: int = 10, after_date: Optional[str] = "2025-01-01") -> Dict[str, Any]:
+async def _save_posts_batch(posts: List[Dict[str, Any]]) -> int:
+    """Save/update a list of external news posts in a single batch query to Turso."""
+    if not posts:
+        return 0
+
+    upsert_sql = """
+    INSERT INTO external_news_posts (
+        id, source_id, source_name, external_id, title, url, excerpt,
+        featured_image_url, category_name, author_name, city, pageviews,
+        published_at, published_date, synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        url = excluded.url,
+        excerpt = excluded.excerpt,
+        featured_image_url = excluded.featured_image_url,
+        category_name = excluded.category_name,
+        author_name = excluded.author_name,
+        city = excluded.city,
+        pageviews = excluded.pageviews,
+        published_at = excluded.published_at,
+        published_date = excluded.published_date,
+        synced_at = excluded.synced_at
     """
-    Fetch UNMER Malang news from TIMES Indonesia API and upsert into external_news_posts.
-    Supports filtering by after_date (e.g. '2025-01-01' to fetch back to early 2025).
+    statements = [
+        libsql_client.Statement(upsert_sql, [
+            p["id"], p["source_id"], p["source_name"], p["external_id"],
+            p["title"], p["url"], p["excerpt"], p["featured_image_url"],
+            p["category_name"], p["author_name"], p["city"], p["pageviews"],
+            p["published_at"], p["published_date"], p["synced_at"]
+        ])
+        for p in posts
+    ]
+    await batch(statements)
+    return len(statements)
+
+
+async def sync_times_indonesia(limit: int = 5, max_pages: int = 1, after_date: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Fetch latest UNMER Malang news from TIMES Indonesia API and upsert into external_news_posts.
+    Fast single-request fetch, immediately stops and disconnects once quota is reached.
     """
     total_fetched = 0
-    total_upserted = 0
     now_iso = datetime.now(timezone.utc).isoformat()
-    stop_early = False
     deleted_ids = await _get_deleted_post_ids()
+    posts_to_save: List[Dict[str, Any]] = []
 
     try:
-        for page_idx in range(max_pages):
-            if stop_early:
-                break
-            offset = page_idx * limit
-            url = f"{TIMES_API_URL}?news_type=search&title=unmer+malang&limit={limit}&offset={offset}"
-            req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+        url = f"{TIMES_API_URL}?news_type=search&title=unmer+malang&limit={limit}&offset=0"
+        req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
 
-            items = data.get("data", [])
-            if not items or not isinstance(items, list):
-                break
-
+        items = data.get("data", [])
+        if isinstance(items, list):
             for it in items:
                 total_fetched += 1
                 ext_id = str(it.get("news_id") or "").strip()
@@ -84,7 +115,6 @@ async def sync_times_indonesia(limit: int = 50, max_pages: int = 10, after_date:
                 if not title:
                     continue
 
-                # Relative link in url_ci4 or url_ci
                 rel_url = it.get("url_ci4") or it.get("url_ci") or f"/read/news/{ext_id}"
                 full_url = f"{TIMES_BASE_WEB}{rel_url}" if rel_url.startswith("/") else rel_url
 
@@ -100,48 +130,38 @@ async def sync_times_indonesia(limit: int = 50, max_pages: int = 10, after_date:
                 except (ValueError, TypeError):
                     pageviews = 0
 
-                # Date: 'YYYY-MM-DD HH:mm:ss'
                 pub_raw = it.get("news_datepub") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
                 if after_date and pub_date < after_date:
-                    stop_early = True
                     break
 
                 post_id = f"times_indonesia_{ext_id}"
                 if post_id in deleted_ids:
                     continue
 
-                await execute(
-                    """
-                    INSERT INTO external_news_posts (
-                        id, source_id, source_name, external_id, title, url, excerpt,
-                        featured_image_url, category_name, author_name, city, pageviews,
-                        published_at, published_date, synced_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        title = excluded.title,
-                        url = excluded.url,
-                        excerpt = excluded.excerpt,
-                        featured_image_url = excluded.featured_image_url,
-                        category_name = excluded.category_name,
-                        author_name = excluded.author_name,
-                        city = excluded.city,
-                        pageviews = excluded.pageviews,
-                        published_at = excluded.published_at,
-                        published_date = excluded.published_date,
-                        synced_at = excluded.synced_at
-                    """,
-                    [
-                        post_id, "times_indonesia", "TIMES Indonesia", ext_id, title, full_url,
-                        excerpt, featured_img, cat_name, author, city, pageviews,
-                        pub_raw, pub_date, now_iso
-                    ]
-                )
-                total_upserted += 1
+                posts_to_save.append({
+                    "id": post_id,
+                    "source_id": "times_indonesia",
+                    "source_name": "TIMES Indonesia",
+                    "external_id": ext_id,
+                    "title": title,
+                    "url": full_url,
+                    "excerpt": excerpt,
+                    "featured_image_url": featured_img,
+                    "category_name": cat_name,
+                    "author_name": author,
+                    "city": city,
+                    "pageviews": pageviews,
+                    "published_at": pub_raw,
+                    "published_date": pub_date,
+                    "synced_at": now_iso
+                })
 
-            if len(items) < limit:
-                break
+                if len(posts_to_save) >= limit:
+                    break
+
+        total_upserted = await _save_posts_batch(posts_to_save)
 
         return {
             "status": "success",
@@ -154,7 +174,7 @@ async def sync_times_indonesia(limit: int = 50, max_pages: int = 10, after_date:
         logger.error(f"Error syncing TIMES Indonesia news: {e}", exc_info=True)
         await log_system_error(
             category=ErrorCategory.INGEST,
-            error_code=ErrorCode.INGEST_API_FAIL,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message=f"Gagal sinkronisasi TIMES Indonesia: {str(e)}",
             exc=e,
             platform="times_indonesia"
@@ -164,7 +184,7 @@ async def sync_times_indonesia(limit: int = 50, max_pages: int = 10, after_date:
             "source": "times_indonesia",
             "error": str(e),
             "total_fetched": total_fetched,
-            "total_upserted": total_upserted
+            "total_upserted": 0
         }
 
 
@@ -193,112 +213,86 @@ def _fetch_radar_data_page(url: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-async def sync_radar_malang(after_date: Optional[str] = "2025-01-01") -> Dict[str, Any]:
+async def sync_radar_malang(limit: int = 5, after_date: Optional[str] = None) -> Dict[str, Any]:
     """
-    Fetch UNMER Malang news from Radar Malang (Jawa Pos) and upsert into external_news_posts.
-    Traverses search queries and topical tag archives.
+    Fetch latest UNMER Malang news from Radar Malang (Jawa Pos) and upsert into external_news_posts.
+    Fast single-page search fetch, immediately stops and disconnects once quota is reached.
     """
     total_fetched = 0
-    total_upserted = 0
     now_iso = datetime.now(timezone.utc).isoformat()
     seen_article_ids = set()
     deleted_ids = await _get_deleted_post_ids()
+    posts_to_save: List[Dict[str, Any]] = []
 
     try:
-        urls_to_crawl = []
-        # 1. Search queries
-        for q in ["unmer malang", "unmer"]:
-            for page in range(1, 4):
-                urls_to_crawl.append(
-                    f"https://radarmalang.jawapos.com/search?q={urllib.parse.quote(q)}&page={page}"
-                )
-        # 2. Tag pages
-        for tag in ["unmer", "unmer-malang", "universitas-merdeka-malang", "universitas-merdeka"]:
-            for page in range(1, 3):
-                urls_to_crawl.append(
-                    f"https://radarmalang.jawapos.com/tag/{tag}?page={page}"
-                )
+        crawl_url = "https://radarmalang.jawapos.com/search?q=unmer+malang&page=1"
+        data = await asyncio.to_thread(_fetch_radar_data_page, crawl_url)
 
-        for crawl_url in urls_to_crawl:
-            data = await asyncio.to_thread(_fetch_radar_data_page, crawl_url)
-            if not data or not isinstance(data, dict):
-                continue
-
+        if data and isinstance(data, dict):
             news_obj = data.get("props", {}).get("news", {})
             items = news_obj.get("data", [])
-            if not items or not isinstance(items, list):
-                continue
+            if isinstance(items, list):
+                for it in items:
+                    art_id = str(it.get("article_id") or it.get("id") or "").strip()
+                    if not art_id or art_id in seen_article_ids:
+                        continue
+                    seen_article_ids.add(art_id)
+                    total_fetched += 1
 
-            for it in items:
-                art_id = str(it.get("article_id") or it.get("id") or "").strip()
-                if not art_id or art_id in seen_article_ids:
-                    continue
-                seen_article_ids.add(art_id)
-                total_fetched += 1
+                    raw_title = it.get("title") or ""
+                    title = _clean_html_text(raw_title)
+                    if not title:
+                        continue
 
-                raw_title = it.get("title") or ""
-                title = _clean_html_text(raw_title)
-                if not title:
-                    continue
+                    post_id = f"radar_malang_{art_id}"
+                    if post_id in deleted_ids:
+                        continue
 
-                post_id = f"radar_malang_{art_id}"
-                if post_id in deleted_ids:
-                    continue
+                    cat_obj = it.get("category") or {}
+                    cat_slug = cat_obj.get("slug") or "berita"
+                    cat_name = (cat_obj.get("name") or "Umum").strip()
 
-                cat_obj = it.get("category") or {}
-                cat_slug = cat_obj.get("slug") or "berita"
-                cat_name = (cat_obj.get("name") or "Umum").strip()
+                    slug = it.get("slug") or ""
+                    article_id_num = it.get("article_id") or art_id
+                    if slug:
+                        full_url = f"https://radarmalang.jawapos.com/{cat_slug}/{article_id_num}/{slug}"
+                    else:
+                        full_url = f"https://radarmalang.jawapos.com/search?q={art_id}"
 
-                slug = it.get("slug") or ""
-                article_id_num = it.get("article_id") or art_id
-                if slug:
-                    full_url = f"https://radarmalang.jawapos.com/{cat_slug}/{article_id_num}/{slug}"
-                else:
-                    full_url = f"https://radarmalang.jawapos.com/search?q={art_id}"
+                    excerpt = _clean_html_text(it.get("description") or "")[:400]
+                    featured_img = it.get("image") or ""
+                    author = "Redaksi Radar Malang"
+                    city = "Malang"
+                    pageviews = 0
 
-                excerpt = _clean_html_text(it.get("description") or "")[:400]
-                featured_img = it.get("image") or ""
-                author = "Redaksi Radar Malang"
-                city = "Malang"
-                pageviews = 0
+                    pub_raw = it.get("date") or it.get("timestamp") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                    pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-                pub_raw = it.get("date") or it.get("timestamp") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                pub_date = pub_raw[:10] if len(pub_raw) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    if after_date and pub_date < after_date:
+                        break
 
-                if after_date and pub_date < after_date:
-                    continue
+                    posts_to_save.append({
+                        "id": post_id,
+                        "source_id": "radar_malang",
+                        "source_name": "Radar Malang",
+                        "external_id": art_id,
+                        "title": title,
+                        "url": full_url,
+                        "excerpt": excerpt,
+                        "featured_image_url": featured_img,
+                        "category_name": cat_name,
+                        "author_name": author,
+                        "city": city,
+                        "pageviews": pageviews,
+                        "published_at": pub_raw,
+                        "published_date": pub_date,
+                        "synced_at": now_iso
+                    })
 
-                await execute(
-                    """
-                    INSERT INTO external_news_posts (
-                        id, source_id, source_name, external_id, title, url, excerpt,
-                        featured_image_url, category_name, author_name, city, pageviews,
-                        published_at, published_date, synced_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        title = excluded.title,
-                        url = excluded.url,
-                        excerpt = excluded.excerpt,
-                        featured_image_url = excluded.featured_image_url,
-                        category_name = excluded.category_name,
-                        author_name = excluded.author_name,
-                        city = excluded.city,
-                        pageviews = excluded.pageviews,
-                        published_at = excluded.published_at,
-                        published_date = excluded.published_date,
-                        synced_at = excluded.synced_at
-                    """,
-                    [
-                        post_id, "radar_malang", "Radar Malang", art_id, title, full_url,
-                        excerpt, featured_img, cat_name, author, city, pageviews,
-                        pub_raw, pub_date, now_iso
-                    ]
-                )
-                total_upserted += 1
+                    if len(posts_to_save) >= limit:
+                        break
 
-            has_more = news_obj.get("paginatorInfo", {}).get("hasMorePages", False)
-            if not has_more:
-                pass
+        total_upserted = await _save_posts_batch(posts_to_save)
 
         return {
             "status": "success",
@@ -311,7 +305,7 @@ async def sync_radar_malang(after_date: Optional[str] = "2025-01-01") -> Dict[st
         logger.error(f"Error syncing Radar Malang news: {e}", exc_info=True)
         await log_system_error(
             category=ErrorCategory.INGEST,
-            error_code=ErrorCode.INGEST_API_FAIL,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message=f"Gagal sinkronisasi Radar Malang: {str(e)}",
             exc=e,
             platform="radar_malang"
@@ -321,14 +315,21 @@ async def sync_radar_malang(after_date: Optional[str] = "2025-01-01") -> Dict[st
             "source": "radar_malang",
             "error": str(e),
             "total_fetched": total_fetched,
-            "total_upserted": total_upserted
+            "total_upserted": 0
         }
 
 
-async def sync_all_external_media(after_date: Optional[str] = "2025-01-01") -> Dict[str, Any]:
-    """Sync all active external media sources (TIMES Indonesia and Radar Malang)."""
-    res_times = await sync_times_indonesia(limit=50, max_pages=10, after_date=after_date)
-    res_radar = await sync_radar_malang(after_date=after_date)
+async def sync_all_external_media(limit_total: int = 10, after_date: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Sync external media sources (TIMES Indonesia and Radar Malang) concurrently.
+    Pulls 10 latest articles in total and immediately disconnects.
+    """
+    quota_each = max(1, limit_total // 2)
+
+    res_times, res_radar = await asyncio.gather(
+        sync_times_indonesia(limit=quota_each, after_date=after_date),
+        sync_radar_malang(limit=quota_each, after_date=after_date)
+    )
 
     now_iso = datetime.now(timezone.utc).isoformat()
     return {

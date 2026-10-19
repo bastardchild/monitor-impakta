@@ -14,6 +14,7 @@ from app.services.kpi_service import (
     get_kpi_targets_progress,
     get_sentiment_summary,
     get_top_posts,
+    get_top_media_posts,
     get_top_youtube_videos,
     get_trend_chart_data,
 )
@@ -33,7 +34,7 @@ def _format_jakarta_time(ts: Optional[int | str]) -> str:
             dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(tz)
         else:
             dt = datetime.fromisoformat(str(ts)).astimezone(tz)
-        return dt.strftime("%d %b %Y, %H:%M WIB")
+        return dt.strftime("%d-%m-%Y, %H:%M WIB")
     except Exception:
         return str(ts)
 
@@ -183,14 +184,16 @@ async def partial_trend_chart(
 async def partial_top_videos(
     request: Request,
     range: str = "30d",
-    platform: Optional[str] = None,
+    platform: Optional[str] = "youtube",
     start: Optional[str] = None,
     end: Optional[str] = None,
     _: None = Depends(require_auth)
 ):
-    videos = await get_top_youtube_videos(
+    plat = platform or "youtube"
+    videos = await get_top_media_posts(
         range_key=range,
-        limit=4,
+        platform_id=plat,
+        limit=10,
         start_custom=start,
         end_custom=end
     )
@@ -202,7 +205,7 @@ async def partial_top_videos(
             "range": range,
             "start": start,
             "end": end,
-            "platform": platform or "youtube"
+            "platform": plat
         }
     )
 
@@ -222,7 +225,7 @@ async def partial_top_posts(
     _: None = Depends(require_auth)
 ):
     plat_filter = platform if (platform and platform != "all") else None
-    effective_sort = sort_by or ("stream_date" if plat_filter == "youtube" else "views")
+    effective_sort = sort_by or ("stream_date" if plat_filter == "youtube" else ("date" if plat_filter in ("instagram", "tiktok") else "views"))
     data = await get_top_posts(
         range_key=range,
         platform_id=plat_filter,
@@ -404,7 +407,7 @@ async def partial_external_media_sync(
     _: None = Depends(require_auth)
 ):
     from app.services.external_media_service import sync_all_external_media, get_external_media_summary, get_external_news_posts
-    sync_result = await sync_all_external_media(after_date="2025-01-01")
+    sync_result = await sync_all_external_media(limit_total=10)
     summary = await get_external_media_summary()
     post_data = await get_external_news_posts(limit=20, page=1)
     return templates.TemplateResponse(

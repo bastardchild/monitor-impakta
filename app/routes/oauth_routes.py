@@ -182,13 +182,13 @@ async def trigger_platform_sync(platform: str, request: Request, _: None = Depen
     if platform == "youtube":
         try:
             from app.services.youtube_service import sync_youtube_videos
-            res = await sync_youtube_videos(since_year=2024)
+            res = await sync_youtube_videos(days=7)
             total = res.get("total_upserted", 0)
-            y_info = ", ".join(f"{yr}: {cnt}" for yr, cnt in res.get("posts_by_year", {}).items())
             return templates.TemplateResponse(
                 request,
                 "partials/sync_status.html",
-                {"status": "success", "message": f"Berhasil sinkronisasi YouTube! {total} video tersimpan ({y_info})."}
+                {"status": "success", "message": f"Berhasil sinkronisasi YouTube (7 hari terakhir)! {total} video diperbarui."},
+                headers={"HX-Trigger": "refreshData"}
             )
         except Exception as e:
             logger.error(f"Error in direct YouTube sync: {e}")
@@ -206,6 +206,73 @@ async def trigger_platform_sync(platform: str, request: Request, _: None = Depen
                 request,
                 "partials/sync_status.html",
                 {"status": "error", "message": f"Gagal sinkronisasi YouTube: {str(e)} ({err_id})"}
+            )
+
+    if platform == "instagram":
+        try:
+            from app.services.instagram_service import sync_instagram_posts
+            res = await sync_instagram_posts(days=7, max_pages=2)
+            total = res.get("total_upserted", 0)
+            followers = res.get("followers", 0)
+            reach_info = f", Jangkauan: {res['reach']:,}" if res.get("reach") else ""
+            return templates.TemplateResponse(
+                request,
+                "partials/sync_status.html",
+                {
+                    "status": "success",
+                    "message": f"Berhasil sinkronisasi Instagram (7 hari terakhir)! {total} postingan diperbarui, {followers:,} pengikut{reach_info}."
+                },
+                headers={"HX-Trigger": "refreshData"}
+            )
+        except Exception as e:
+            logger.error(f"Error in direct Instagram sync: {e}")
+            err_id = await log_system_error(
+                category=ErrorCategory.OAUTH,
+                error_code=ErrorCode.OAUTH_WEBHOOK_FAILED,
+                message=f"Error running direct Instagram sync: {str(e)}",
+                exc=e,
+                path=request.url.path,
+                method=request.method,
+                platform_id=platform,
+                status_code=500,
+            )
+            return templates.TemplateResponse(
+                request,
+                "partials/sync_status.html",
+                {"status": "error", "message": f"Gagal sinkronisasi Instagram: {str(e)} ({err_id})"}
+            )
+
+    if platform == "tiktok":
+        try:
+            from app.services.tiktok_service import sync_tiktok_videos
+            res = await sync_tiktok_videos(days=7, max_pages=2)
+            total = res.get("total_upserted", 0)
+            followers = res.get("followers", 0)
+            return templates.TemplateResponse(
+                request,
+                "partials/sync_status.html",
+                {
+                    "status": "success",
+                    "message": f"Berhasil sinkronisasi TikTok (7 hari terakhir)! {total} video diperbarui, {followers:,} pengikut."
+                },
+                headers={"HX-Trigger": "refreshData"}
+            )
+        except Exception as e:
+            logger.error(f"Error in direct TikTok sync: {e}")
+            err_id = await log_system_error(
+                category=ErrorCategory.OAUTH,
+                error_code=ErrorCode.OAUTH_WEBHOOK_FAILED,
+                message=f"Error running direct TikTok sync: {str(e)}",
+                exc=e,
+                path=request.url.path,
+                method=request.method,
+                platform_id=platform,
+                status_code=500,
+            )
+            return templates.TemplateResponse(
+                request,
+                "partials/sync_status.html",
+                {"status": "error", "message": f"Gagal sinkronisasi TikTok: {str(e)} ({err_id})"}
             )
 
     url_attr = f"N8N_WEBHOOK_URL_{platform.upper()}"

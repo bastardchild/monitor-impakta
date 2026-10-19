@@ -80,8 +80,8 @@ body {
 .htmx-indicator {
     display: none;
 }
-.htmx-request .htmx-indicator,
-.htmx-request.htmx-indicator {
+.htmx-request .htmx-indicator:not(.sync-modal-overlay),
+.htmx-request.htmx-indicator:not(.sync-modal-overlay) {
     display: inline-block;
 }
 
@@ -324,6 +324,19 @@ nav.sidebar-nav,
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.25rem;
+}
+
+/* 5 Column Grid for Top 10 YouTube Videos (2 rows of 5) */
+.top-videos-grid-5 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.85rem;
+}
+
+@media (min-width: 1024px) {
+    .top-videos-grid-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
 }
 
 /* General Card */
@@ -794,3 +807,192 @@ input[type="reset"],
     border: 1px solid #1e293b;
     flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Alert Banner & Feedback Notifications
+   ========================================================================== */
+.alert-banner {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 0.75rem !important;
+}
+
+.alert-banner[style*="display: none"] {
+    display: none !important;
+}
+
+.alert-banner-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.alert-banner-close {
+    background: none !important;
+    border: none !important;
+    color: inherit !important;
+    cursor: pointer !important;
+    padding: 0.25rem !important;
+    margin: 0 0 0 auto !important; /* Forces close button to the far right */
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    opacity: 0.75;
+    transition: opacity 0.15s ease;
+}
+
+.alert-banner-close:hover {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Sync / Reload Loading Modal Popup Overlay
+   ========================================================================== */
+.sync-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1.5rem !important;
+    box-sizing: border-box !important;
+    pointer-events: all;
+}
+
+.sync-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 7, 14, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.sync-modal-card {
+    position: relative !important;
+    z-index: 2 !important;
+    width: 100% !important;
+    max-width: 400px !important;
+    margin: auto !important;
+    background: #0d121f !important;
+    border: 1px solid rgba(59, 130, 246, 0.4) !important;
+    border-radius: 18px !important;
+    padding: 2.25rem 2rem 1.75rem !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(56, 189, 248, 0.2) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    animation: syncPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sync-modal-icon-wrapper {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(15, 23, 42, 0.6) 75%);
+    border: 1.5px solid rgba(56, 189, 248, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
+}
+
+.sync-spin-icon {
+    width: 38px;
+    height: 38px;
+    color: #38bdf8;
+    animation: syncSpinAnim 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6));
+}
+
+@keyframes syncSpinAnim {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes syncPopIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.sync-modal-title {
+    margin: 0 0 0.5rem;
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+}
+
+.sync-modal-subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.55;
+}
+
+.sync-modal-pulse {
+    width: 100%;
+    height: 4px;
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 1.5rem;
+    position: relative;
+}
+
+.sync-modal-pulse-bar {
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #60a5fa, #a855f7);
+    border-radius: 9999px;
+    animation: syncBarPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes syncBarPulse {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(120%);
+    }
+    100% {
+        transform: translateX(260%);
+    }
+}
+
+/* HTMX display trigger rules */
+.htmx-request#sync-modal-overlay,
+.htmx-request.sync-modal-overlay,
+.htmx-request .sync-modal-overlay,
+body.sync-in-progress #sync-modal-overlay,
+#sync-modal-overlay.active {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+

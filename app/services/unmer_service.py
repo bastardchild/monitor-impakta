@@ -1,13 +1,14 @@
 import asyncio
 import calendar
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import html
 import logging
 import re
 from typing import Any, Dict, List, Optional
 import urllib.request
 import json
-from app.db import execute, fetch_all, fetch_one
+from app.db import batch, execute, fetch_all, fetch_one
+from libsql_client import Statement
 from app.services.error_logger import ErrorCategory, ErrorCode, log_system_error
 from app.services.kpi_service import format_date_dmy, format_number_id
 
@@ -40,17 +41,17 @@ def _clean_html_text(raw_html: Optional[str]) -> str:
     return " ".join(clean.split()).strip()
 
 
-def _fetch_unmer_views_sync() -> Dict[int, int]:
+def _fetch_unmer_views_sync(max_pages_per_cat: int = 2) -> Dict[int, int]:
     """Crawl unmer.ac.id category archive pages to extract public post views from ThemeREX HTML."""
     views_map: Dict[int, int] = {}
     pattern = r'id="post-(\d+)"[\s\S]*?post_meta_views[\s\S]*?post_meta_number[^>]*>(\d+)'
     
     for cat in ["berita", "artikel"]:
-        for page in range(1, 6):
+        for page in range(1, max_pages_per_cat + 1):
             url = f"https://unmer.ac.id/category/{cat}/page/{page}/" if page > 1 else f"https://unmer.ac.id/category/{cat}/"
             try:
                 req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
-                with urllib.request.urlopen(req, timeout=12) as r:
+                with urllib.request.urlopen(req, timeout=8) as r:
                     html_text = r.read().decode("utf-8")
                 matches = re.findall(pattern, html_text)
                 if not matches:
@@ -67,24 +68,39 @@ def _fetch_unmer_views_sync() -> Dict[int, int]:
     return views_map
 
 
-async def sync_unmer_posts(max_pages: int = 5, per_page: int = 100, after: Optional[str] = "2026-01-01T00:00:00") -> Dict[str, Any]:
+async def sync_unmer_posts(
+    max_pages: int = 2,
+    per_page: int = 50,
+    days: int = 30,
+    after: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Fetch posts from unmer.ac.id WordPress REST API for categories Berita (487) and Artikel (919)
-    and store/upsert them into Turso/LibSQL database. Supports year/date filtering.
+    from the last 1 month (or custom date) and batch upsert into Turso/LibSQL database.
     """
     total_fetched = 0
     total_upserted = 0
-    now_iso = datetime.now(timezone.utc).isoformat()
-    views_map = await asyncio.to_thread(_fetch_unmer_views_sync)
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    # Default to last 1 month (30 days ago) if after is not specified
+    if not after:
+        after = (now - timedelta(days=days)).strftime("%Y-%m-%dT00:00:00")
+
+    views_map = await asyncio.to_thread(_fetch_unmer_views_sync, 2)
+    batch_stmts: List[Statement] = []
 
     for page in range(1, max_pages + 1):
-        url = f"{UNMER_WP_BASE}/posts?categories={CATEGORY_BERITA_ID},{CATEGORY_ARTIKEL_ID}&per_page={per_page}&page={page}&_embed=1"
+        url = (
+            f"{UNMER_WP_BASE}/posts?categories={CATEGORY_BERITA_ID},{CATEGORY_ARTIKEL_ID}"
+            f"&per_page={per_page}&page={page}&_embed=1"
+            f"&_fields=id,slug,title,link,excerpt,date,categories,_embedded"
+        )
         if after:
             url += f"&after={after}"
         try:
             req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
-            # Execute with timeout
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             if not data or not isinstance(data, list):
@@ -122,10 +138,10 @@ async def sync_unmer_posts(max_pages: int = 5, per_page: int = 100, after: Optio
                     continue
 
                 # Publish Date
-                date_str = p.get("date", "")  # e.g. "2026-10-04T09:52:15"
-                pub_date = date_str[:10] if len(date_str) >= 10 else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                date_str = p.get("date", "")
+                pub_date = date_str[:10] if len(date_str) >= 10 else now.strftime("%Y-%m-%d")
 
-                # Author name if embedded
+                # Author name
                 author_name = "Humas UNMER Malang"
                 author_list = embedded.get("author", [])
                 if author_list and isinstance(author_list, list) and len(author_list) > 0:
@@ -134,31 +150,33 @@ async def sync_unmer_posts(max_pages: int = 5, per_page: int = 100, after: Optio
                 # Pageviews from ThemeREX
                 post_views = views_map.get(post_id, 0)
 
-                # Upsert into database
-                await execute(
-                    """
-                    INSERT INTO unmer_posts (
-                        id, slug, title, link, excerpt, featured_image_url,
-                        category_id, category_name, published_at, published_date,
-                        author_name, pageviews, synced_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        title = excluded.title,
-                        link = excluded.link,
-                        excerpt = excluded.excerpt,
-                        featured_image_url = excluded.featured_image_url,
-                        category_name = excluded.category_name,
-                        published_at = excluded.published_at,
-                        published_date = excluded.published_date,
-                        author_name = excluded.author_name,
-                        pageviews = CASE WHEN excluded.pageviews > 0 THEN excluded.pageviews ELSE unmer_posts.pageviews END,
-                        synced_at = excluded.synced_at
-                    """,
-                    [
-                        post_id, slug, title, link, excerpt, featured_img,
-                        cat_id, cat_name, date_str, pub_date,
-                        author_name, post_views, now_iso
-                    ]
+                # Queue statement for batch execution
+                batch_stmts.append(
+                    Statement(
+                        """
+                        INSERT INTO unmer_posts (
+                            id, slug, title, link, excerpt, featured_image_url,
+                            category_id, category_name, published_at, published_date,
+                            author_name, pageviews, synced_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            title = excluded.title,
+                            link = excluded.link,
+                            excerpt = excluded.excerpt,
+                            featured_image_url = CASE WHEN excluded.featured_image_url != '' THEN excluded.featured_image_url ELSE unmer_posts.featured_image_url END,
+                            category_name = excluded.category_name,
+                            published_at = excluded.published_at,
+                            published_date = excluded.published_date,
+                            author_name = excluded.author_name,
+                            pageviews = CASE WHEN excluded.pageviews > 0 THEN excluded.pageviews ELSE unmer_posts.pageviews END,
+                            synced_at = excluded.synced_at
+                        """,
+                        [
+                            post_id, slug, title, link, excerpt, featured_img,
+                            cat_id, cat_name, date_str, pub_date,
+                            author_name, post_views, now_iso
+                        ]
+                    )
                 )
                 total_upserted += 1
 
@@ -187,17 +205,19 @@ async def sync_unmer_posts(max_pages: int = 5, per_page: int = 100, after: Optio
                 method="GET",
                 platform_id="unmer",
             )
-    # Bulk update views for all posts mapped from ThemeREX
-    for pid, v in views_map.items():
-        if v > 0:
-            await execute("UPDATE unmer_posts SET pageviews = ? WHERE id = ?", [v, pid])
 
-    logger.info(f"UNMER sync completed: {total_fetched} fetched, {total_upserted} upserted, {len(views_map)} views updated.")
+    # Execute all statements in batches of 50
+    if batch_stmts:
+        for i in range(0, len(batch_stmts), 50):
+            await batch(batch_stmts[i:i + 50])
+
+    logger.info(f"UNMER sync completed in batch: {total_fetched} fetched, {total_upserted} upserted from last {days} days.")
     return {
         "status": "success",
         "total_fetched": total_fetched,
         "total_upserted": total_upserted,
         "synced_at": now_iso,
+        "filter_days": days,
     }
 
 

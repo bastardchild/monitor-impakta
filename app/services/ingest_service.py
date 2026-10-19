@@ -46,6 +46,8 @@ async def ingest_account_metrics(items: List[AccountMetricsItem]) -> int:
             )
             rows += 1
         await log_ingest("account_metrics", "success", rows_upserted=rows)
+        from app.services.kpi_service import invalidate_kpi_cache
+        invalidate_kpi_cache()
         return rows
     except Exception as e:
         logger.error(f"Error ingesting account metrics: {e}")
@@ -137,6 +139,8 @@ async def ingest_post_metrics(items: List[PostMetricsItem]) -> int:
             )
             rows += 1
         await log_ingest("post_metrics", "success", rows_upserted=rows)
+        from app.services.kpi_service import invalidate_kpi_cache
+        invalidate_kpi_cache()
         return rows
     except Exception as e:
         logger.error(f"Error ingesting post metrics: {e}")

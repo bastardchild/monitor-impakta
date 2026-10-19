@@ -41,7 +41,7 @@ function renderTrendChart(canvasId, data) {
                     borderColor: '#38bdf8', // Cyan 400
                     backgroundColor: 'rgba(56, 189, 248, 0.08)',
                     borderWidth: 2,
-                    pointRadius: 0,
+                    pointRadius: (data.labels && data.labels.length <= 3) ? 4 : 0,
                     pointHoverRadius: 4,
                     pointHoverBackgroundColor: '#38bdf8',
                     pointHoverBorderColor: '#0f172a',
@@ -57,7 +57,7 @@ function renderTrendChart(canvasId, data) {
                     backgroundColor: isYouTube ? 'rgba(16, 185, 129, 0.05)' : 'transparent',
                     borderWidth: 2,
                     borderDash: isYouTube ? [] : [4, 4],
-                    pointRadius: 0,
+                    pointRadius: (data.labels && data.labels.length <= 3) ? 4 : 0,
                     pointHoverRadius: 4,
                     pointHoverBackgroundColor: secondColor,
                     pointHoverBorderColor: '#0f172a',
@@ -181,5 +181,87 @@ document.addEventListener('htmx:afterSwap', function (e) {
         window.Alpine.initTree(e.detail.target);
     }
 });
+
+// Global Sync / Reload Loading Modal Controller
+(function () {
+    function initSyncModal() {
+        const overlay = document.getElementById('sync-modal-overlay');
+        if (!overlay) return;
+
+        const titleEl = document.getElementById('sync-modal-title');
+        const subtitleEl = document.getElementById('sync-modal-subtitle');
+
+        const defaultTitle = 'Menyinkronkan Data...';
+        const defaultSubtitle = 'Sistem sedang mengambil & memperbarui data terbaru. Mohon tunggu sebentar.';
+
+        let activeRequestsCount = 0;
+
+        document.body.addEventListener('htmx:beforeRequest', function (e) {
+            const detail = e.detail || {};
+            const path = (detail.pathInfo && detail.pathInfo.requestPath) || '';
+            const elt = detail.elt;
+
+            const isSync = path.includes('/sync') || 
+                           (elt && (elt.matches('[data-sync-button]') || elt.closest('[data-sync-button]')));
+
+            const isFilterRange = path.includes('/partials/kpi-cards') || 
+                                  path.includes('/partials/trend-chart') || 
+                                  path.includes('/partials/top-videos') || 
+                                  path.includes('/partials/top-posts') ||
+                                  path.includes('/partials/sentiment-insight') ||
+                                  path.includes('/partials/unmer') ||
+                                  path.includes('/partials/external-media');
+
+            if (isSync || isFilterRange) {
+                activeRequestsCount++;
+
+                if (isSync) {
+                    const btn = elt ? (elt.matches('[data-sync-button]') ? elt : elt.closest('[data-sync-button]')) : null;
+                    if (titleEl) {
+                        titleEl.textContent = (btn && btn.dataset.syncTitle) || defaultTitle;
+                    }
+                    if (subtitleEl) {
+                        subtitleEl.textContent = (btn && btn.dataset.syncSubtitle) || defaultSubtitle;
+                    }
+                } else if (isFilterRange && activeRequestsCount === 1) {
+                    if (titleEl) {
+                        titleEl.textContent = 'Memuat Data Periode...';
+                    }
+                    if (subtitleEl) {
+                        subtitleEl.textContent = 'Sedang memperbarui metrik dan grafik untuk periode terpilih...';
+                    }
+                }
+
+                document.body.classList.add('sync-in-progress');
+                overlay.classList.add('active');
+            }
+        });
+
+        function handleRequestEnd() {
+            if (activeRequestsCount > 0) {
+                activeRequestsCount--;
+            }
+            if (activeRequestsCount <= 0) {
+                activeRequestsCount = 0;
+                document.body.classList.remove('sync-in-progress');
+                overlay.classList.remove('active');
+                if (titleEl) titleEl.textContent = defaultTitle;
+                if (subtitleEl) subtitleEl.textContent = defaultSubtitle;
+            }
+        }
+
+        document.body.addEventListener('htmx:afterRequest', handleRequestEnd);
+        document.body.addEventListener('htmx:responseError', handleRequestEnd);
+        document.body.addEventListener('htmx:sendError', handleRequestEnd);
+        document.body.addEventListener('htmx:timeout', handleRequestEnd);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSyncModal);
+    } else {
+        initSyncModal();
+    }
+})();
+
 
 

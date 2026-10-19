@@ -27,7 +27,7 @@
     <!-- Connection Cards (Loaded via HTMX auto-refresh every 30s) -->
     <div id="connection-cards-container"
          hx-get="/partials/connection-status"
-         hx-trigger="load, every 30s"
+         hx-trigger="load, refreshData from:body"
          hx-swap="innerHTML">
         <!-- Skeleton loading placeholder -->
         <div class="grid-3">

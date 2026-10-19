@@ -116,11 +116,13 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "metric", "value": "reach,profile_views" },
+            { "name": "metric", "value": "reach" },
             { "name": "period", "value": "day" }
           ]
         },
-        "options": {}
+        "options": {
+          "continueOnFail": true
+        }
       },
       "id": "ig-fetch-insights",
       "name": "Fetch Insights Akun",

@@ -1,0 +1,79 @@
+# ==============================================================================
+# PRODUCTION DOCKER COMPOSE CONFIGURATION (WITHOUT CLOUDFLARE TUNNEL)
+# Reverse Proxy diatur via Caddy di Host VPS -> 127.0.0.1:8001
+# ==============================================================================
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: monitor_impakta
+    restart: always
+    ports:
+      - "127.0.0.1:8001:8000"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - monitor_net
+
+  n8n:
+    image: n8nio/n8n:1.80.0
+    container_name: monitor_n8n
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=${TZ:-Asia/Jakarta}
+      - TZ=${TZ:-Asia/Jakarta}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - INGEST_API_KEY=${INGEST_API_KEY}
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - monitor_net
+
+  n8n-import:
+    image: n8nio/n8n:1.80.0
+    container_name: monitor_n8n_import
+    restart: "no"
+    depends_on:
+      n8n:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    entrypoint: ["n8n", "import:workflow", "--separate", "--input=/workflows"]
+    networks:
+      - monitor_net
+
+volumes:
+  n8n_data:
+
+networks:
+  monitor_net:
+    driver: bridge
