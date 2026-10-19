@@ -38,7 +38,7 @@ FROM base AS runtime
 COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
-RUN chown -R appuser:appuser /app
+RUN mkdir -p /app/data/thumbnails && chown -R appuser:appuser /app
 
 # Copy application files
 COPY --chown=appuser:appuser app/ /app/app/

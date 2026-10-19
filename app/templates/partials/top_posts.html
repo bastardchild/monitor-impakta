@@ -107,8 +107,14 @@
                     </td>
                     <td style="padding-left:0.75rem;">
                         <div style="display:flex;align-items:center;gap:0.75rem;">
-                            {% if post.thumbnail_url %}
-                            <img src="{{ post.thumbnail_url }}" alt="Thumbnail" class="post-thumbnail" style="width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid #1e293b;">
+                            {% if post.thumbnail_url or post.platform_id in ['instagram', 'tiktok'] %}
+                            <img src="/api/media/thumbnail/{{ post.id }}" 
+                                 alt="Thumbnail" 
+                                 class="post-thumbnail" 
+                                 loading="lazy"
+                                 referrerpolicy="no-referrer"
+                                 onerror="this.onerror=null; if('{{ post.thumbnail_url }}') this.src='{{ post.thumbnail_url }}';"
+                                 style="width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid #1e293b;">
                             {% else %}
                             <div class="post-thumbnail" style="width:48px;height:48px;border-radius:6px;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 {% if post.platform_id == 'youtube' %}

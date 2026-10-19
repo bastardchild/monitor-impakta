@@ -11,6 +11,7 @@ services:
       - .env
     volumes:
       - ./app:/app/app:ro
+      - thumbnail_data:/app/data/thumbnails
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
       interval: 10s
@@ -127,6 +128,7 @@ services:
 
 volumes:
   n8n_data:
+  thumbnail_data:
 
 networks:
   monitor_net:

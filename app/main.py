@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.db import close_client, fetch_all
-from app.routes import auth, ingest_api, internal_api, oauth_routes, pages, partials, settings_targets
+from app.routes import auth, ingest_api, internal_api, media, oauth_routes, pages, partials, settings_targets
 from app.security import SensitiveDataFilter
 from app.services.error_logger import ErrorCategory, ErrorCode, log_system_error, prune_old_error_logs
 from app.services.token_service import refresh_platform_token
@@ -121,6 +121,7 @@ app.include_router(partials.router)
 app.include_router(settings_targets.router)
 app.include_router(internal_api.router)
 app.include_router(ingest_api.router)
+app.include_router(media.router)
 
 
 @app.exception_handler(303)
