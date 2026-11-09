@@ -118,23 +118,23 @@
     <article class="kpi-card">
         {% if platform == 'youtube' %}
         <div class="kpi-card-header">
-            <span class="kpi-card-title">Durasi Tonton (Watch Time)</span>
+            <span class="kpi-card-title">Total Interaksi Video</span>
             <div class="kpi-icon-badge" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);">
                 <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.434.883 1.33 1.448 2.316 1.448h5.26c.717 0 1.407-.294 1.906-.813a13.456 13.456 0 003.048-8.587 13.43 13.43 0 00-.07-1.423c-.222-2.072-2.093-3.481-4.174-3.481h-3.126a3.75 3.75 0 01-.637-.055c.34-.73.541-1.547.541-2.404A3.75 3.75 0 0014.25.75a2.25 2.25 0 00-2.25 2.25v.583a6 6 0 01-.429 2.228 7.545 7.545 0 01-2.385 2c-.689.44-1.282 1.054-1.682 1.796M3 9h2.25v10.5H3V9z" />
                 </svg>
             </div>
         </div>
         <div>
             <div class="kpi-card-footer">
                 <span class="kpi-card-value font-tabular">
-                    {{ kpi.total_watch_time_hours }} <span style="font-size:13px;font-weight:400;color:#94a3b8;">Jam</span>
+                    {{ (kpi.total_likes + kpi.total_comments) | default(0) }} <span style="font-size:12px;font-weight:400;color:#94a3b8;">Aksi</span>
                 </span>
                 <span class="delta-pill delta-neutral">
-                    {% if kpi.post_count > 0 %}+{{ kpi.post_count }} Rilis Baru{% else %}0 Rilis Baru{% endif %}
+                    {% if kpi.post_count > 0 %}+{{ kpi.post_count }} Video Baru{% else %}0 Video Baru{% endif %}
                 </span>
             </div>
-            <p class="kpi-card-caption">Total waktu pemirsa menyaksikan siaran pada periode ini</p>
+            <p class="kpi-card-caption">{{ kpi.total_likes_formatted }} Suka &bull; {{ kpi.total_comments_formatted }} Komentar</p>
         </div>
         {% else %}
         <div class="kpi-card-header">
