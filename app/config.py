@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     N8N_WEBHOOK_URL_TIKTOK: str = "http://n8n:5678/webhook/sync-tiktok"
     N8N_WEBHOOK_SECRET: str = ""
     
+    SERPAPI_KEY: str = ""
+    GOOGLE_MAPS_PLACE_ID: str = "ChIJj7qtWSso1i0RvE-S5MXstO0"
+    
     TZ: str = "Asia/Jakarta"
 
     model_config = SettingsConfigDict(

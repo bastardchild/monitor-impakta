@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Google Reviews &bull; UNMER Malang &bull; IMPAKTA RADAR{% endblock %}
+{% block page_title %}Monitoring Google Reviews{% endblock %}
+
+{% block filter_controls %}
+<div style="display:flex;align-items:center;gap:0.5rem;">
+    <a href="https://www.google.com/maps/place/?q=place_id:{{ summary.place_id }}"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="btn-ui btn-ui-secondary"
+       style="font-size:11px;padding:0.35rem 0.65rem;"
+       title="Buka Lokasi di Google Maps">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+        </svg>
+        <span>Google Maps</span>
+    </a>
+    <button type="button"
+            hx-post="/partials/google-reviews/sync"
+            hx-target="#gr-sync-feedback"
+            hx-swap="innerHTML"
+            hx-indicator="#sync-modal-overlay"
+            data-sync-button
+            data-sync-title="Menyinkronkan Google Reviews..."
+            data-sync-subtitle="Mengambil ulasan terbaru (2 minggu terakhir) untuk {{ summary.location_name }}..."
+            class="btn-ui btn-ui-primary"
+            style="font-size:11px;padding:0.35rem 0.85rem;"
+            title="Tarik ulasan Google Maps 2 minggu terakhir">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </svg>
+        <span class="btn-text">Sync 2 Minggu</span>
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:1.5rem;">
+    <div id="gr-sync-feedback"></div>
+
+    <!-- Summary KPI Cards -->
+    <div id="google-reviews-summary-cards">
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Total Ulasan Tersimpan</span>
+                    <div class="kpi-icon-badge" style="background:rgba(250,204,21,0.12);color:#facc15;border:1px solid rgba(250,204,21,0.25);">
+                        <svg style="width:14px;height:14px;" fill="currentColor" viewBox="0 0 24 24"><path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ summary.total_reviews }}</span>
+                        <span class="delta-pill delta-positive">{{ summary.location_name }}</span>
+                    </div>
+                    <p style="font-size:11px;color:#64748b;margin:0.4rem 0 0;">
+                        Sync terakhir: {{ summary.last_synced_at or 'Belum pernah' }}
+                    </p>
+                </div>
+            </article>
+
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Rata-rata Rating</span>
+                    <div class="kpi-icon-badge" style="background:rgba(250,204,21,0.12);color:#facc15;border:1px solid rgba(250,204,21,0.25);">
+                        <span style="font-size:12px;font-weight:700;">★</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular">{{ "%.2f"|format(summary.avg_rating or 0) }} <span style="font-size:14px;color:#94a3b8;font-weight:500;">/ 5.0</span></span>
+                        <span class="delta-pill delta-positive">Bintang 5: {{ summary.stars[5] }}</span>
+                    </div>
+                    <p style="font-size:11px;color:#64748b;margin:0.4rem 0 0;">
+                        4★: {{ summary.stars[4] }} &bull; 3★: {{ summary.stars[3] }} &bull; 2★: {{ summary.stars[2] }} &bull; 1★: {{ summary.stars[1] }}
+                    </p>
+                </div>
+            </article>
+
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Sentimen Positif (4–5★)</span>
+                    <div class="kpi-icon-badge" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular" style="color:#34d399;">{{ summary.positive_count }}</span>
+                        <span class="delta-pill delta-positive">
+                            {% if summary.total_reviews > 0 %}
+                                {{ "%.1f"|format((summary.positive_count / summary.total_reviews) * 100) }}%
+                            {% else %}
+                                0.0%
+                            {% endif %}
+                        </span>
+                    </div>
+                    <p style="font-size:11px;color:#64748b;margin:0.4rem 0 0;">Ulasan bintang 4 dan 5</p>
+                </div>
+            </article>
+
+            <article class="kpi-card">
+                <div class="kpi-card-header">
+                    <span class="kpi-card-title">Netral &amp; Negatif (1–3★)</span>
+                    <div class="kpi-icon-badge" style="background:rgba(244,63,94,0.12);color:#fb7185;border:1px solid rgba(244,63,94,0.25);">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-card-footer">
+                        <span class="kpi-card-value font-tabular" style="color:#fb7185;">{{ summary.neutral_count + summary.negative_count }}</span>
+                        <span class="delta-pill delta-negative">Negatif: {{ summary.negative_count }}</span>
+                    </div>
+                    <p style="font-size:11px;color:#64748b;margin:0.4rem 0 0;">
+                        Netral (3★): {{ summary.neutral_count }} &bull; Negatif (1–2★): {{ summary.negative_count }}
+                    </p>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Reviews Table Card -->
+    <article class="dashboard-card" style="margin:0;padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1.25rem;border-bottom:1px solid #1e293b;">
+            <div>
+                <h3 style="font-size:16px;font-weight:700;color:#ffffff;margin:0;letter-spacing:-0.01em;">
+                    Daftar Ulasan Google Maps
+                </h3>
+                <p style="font-size:12px;color:#94a3b8;margin:0.25rem 0 0;">
+                    {{ summary.location_name }} &bull; Place ID: <span class="font-mono">{{ summary.place_id }}</span>
+                </p>
+            </div>
+
+            <!-- Filter Bar -->
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                    <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Rating:</label>
+                    <select id="gr-rating-select"
+                            name="rating"
+                            hx-get="/partials/google-reviews/list"
+                            hx-target="#google-reviews-list-container"
+                            hx-swap="innerHTML"
+                            hx-include="#gr-sentiment-select, #gr-search-input, #gr-sort-select, #gr-limit-select"
+                            hx-vals='{"page": 1}'
+                            style="height:34px;font-size:12px;margin:0;padding:0 1.8rem 0 0.65rem;border-radius:8px;background:#0d121f;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                        <option value="all" {% if rating == 'all' or not rating %}selected{% endif %}>Semua Bintang</option>
+                        <option value="5" {% if rating == '5' %}selected{% endif %}>5 Bintang</option>
+                        <option value="4" {% if rating == '4' %}selected{% endif %}>4 Bintang</option>
+                        <option value="3" {% if rating == '3' %}selected{% endif %}>3 Bintang</option>
+                        <option value="2" {% if rating == '2' %}selected{% endif %}>2 Bintang</option>
+                        <option value="1" {% if rating == '1' %}selected{% endif %}>1 Bintang</option>
+                    </select>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                    <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Sentimen:</label>
+                    <select id="gr-sentiment-select"
+                            name="sentiment"
+                            hx-get="/partials/google-reviews/list"
+                            hx-target="#google-reviews-list-container"
+                            hx-swap="innerHTML"
+                            hx-include="#gr-rating-select, #gr-search-input, #gr-sort-select, #gr-limit-select"
+                            hx-vals='{"page": 1}'
+                            style="height:34px;font-size:12px;margin:0;padding:0 1.8rem 0 0.65rem;border-radius:8px;background:#0d121f;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                        <option value="all" {% if sentiment == 'all' or not sentiment %}selected{% endif %}>Semua</option>
+                        <option value="positive" {% if sentiment == 'positive' %}selected{% endif %}>Positif (4-5★)</option>
+                        <option value="neutral" {% if sentiment == 'neutral' %}selected{% endif %}>Netral (3★)</option>
+                        <option value="negative" {% if sentiment == 'negative' %}selected{% endif %}>Negatif (1-2★)</option>
+                    </select>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                    <label style="font-size:11px;font-family:var(--font-mono);color:#94a3b8;margin:0;text-transform:uppercase;">Urut:</label>
+                    <select id="gr-sort-select"
+                            name="sort_by"
+                            hx-get="/partials/google-reviews/list"
+                            hx-target="#google-reviews-list-container"
+                            hx-swap="innerHTML"
+                            hx-include="#gr-rating-select, #gr-sentiment-select, #gr-search-input, #gr-limit-select"
+                            hx-vals='{"page": 1}'
+                            style="height:34px;font-size:12px;margin:0;padding:0 1.8rem 0 0.65rem;border-radius:8px;background:#0d121f;border:1px solid #1e293b;color:#f1f5f9;cursor:pointer;">
+                        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Terbaru</option>
+                        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Terlama</option>
+                        <option value="highest" {% if sort_by == 'highest' %}selected{% endif %}>Rating Tertinggi</option>
+                        <option value="lowest" {% if sort_by == 'lowest' %}selected{% endif %}>Rating Terendah</option>
+                    </select>
+                </div>
+
+                <div style="position:relative;">
+                    <input type="search"
+                           id="gr-search-input"
+                           name="search"
+                           value="{{ search or '' }}"
+                           placeholder="Cari pengulas / isi ulasan..."
+                           hx-get="/partials/google-reviews/list"
+                           hx-trigger="keyup changed delay:350ms, search"
+                           hx-target="#google-reviews-list-container"
+                           hx-include="#gr-rating-select, #gr-sentiment-select, #gr-sort-select, #gr-limit-select"
+                           hx-vals='{"page": 1}'
+                           style="margin:0;padding:0.4rem 0.75rem 0.4rem 2rem;font-size:12px;width:210px;height:34px;background:#0d121f;border:1px solid #1e293b;border-radius:8px;color:#f1f5f9;">
+                    <svg style="position:absolute;left:0.65rem;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#64748b;pointer-events:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                    </svg>
+                </div>
+
+                <input type="hidden" id="gr-limit-select" name="limit" value="{{ limit or 20 }}">
+            </div>
+        </div>
+
+        <div id="google-reviews-list-container">
+            {% include "partials/google_reviews_table.html" %}
+        </div>
+    </article>
+</div>
+{% endblock %}

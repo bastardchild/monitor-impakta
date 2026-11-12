@@ -484,4 +484,59 @@ async def partial_external_media_delete(
     )
 
 
+@router.get("/google-reviews/list", response_class=HTMLResponse)
+async def partial_google_reviews_list(
+    request: Request,
+    rating: Optional[str] = "all",
+    sentiment: Optional[str] = "all",
+    search: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    sort_by: str = "newest",
+    page: int = 1,
+    limit: int = 20,
+    _: None = Depends(require_auth)
+):
+    from app.services.google_review_service import get_google_reviews
+    data = await get_google_reviews(
+        rating=rating,
+        sentiment=sentiment,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+        sort_by=sort_by,
+        page=page,
+        limit=limit,
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/google_reviews_table.html",
+        data
+    )
+
+
+@router.post("/google-reviews/sync", response_class=HTMLResponse)
+async def partial_google_reviews_sync(
+    request: Request,
+    _: None = Depends(require_auth)
+):
+    from app.services.google_review_service import (
+        sync_google_reviews,
+        get_google_reviews_summary,
+        get_google_reviews,
+    )
+    sync_result = await sync_google_reviews(days=14, max_pages=10, stop_on_existing=True)
+    summary = await get_google_reviews_summary()
+    review_data = await get_google_reviews(limit=20, page=1)
+    return templates.TemplateResponse(
+        request,
+        "partials/google_reviews_sync_result.html",
+        {
+            "sync_result": sync_result,
+            "summary": summary,
+            **review_data,
+        }
+    )
+
+
 

@@ -184,6 +184,44 @@ async def external_media_page(
     )
 
 
+@router.get("/google-reviews", response_class=HTMLResponse)
+async def google_reviews_page(
+    request: Request,
+    rating: Optional[str] = "all",
+    sentiment: Optional[str] = "all",
+    search: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    sort_by: str = "newest",
+    page: int = 1,
+    limit: int = 20,
+    _: None = Depends(require_auth)
+):
+    from app.services.google_review_service import get_google_reviews_summary, get_google_reviews
+    flash = _get_flash_messages(request)
+    summary = await get_google_reviews_summary()
+    review_data = await get_google_reviews(
+        rating=rating,
+        sentiment=sentiment,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+        sort_by=sort_by,
+        page=page,
+        limit=limit,
+    )
+    return templates.TemplateResponse(
+        request,
+        "google_reviews.html",
+        {
+            "current_page": "google_reviews",
+            "summary": summary,
+            **review_data,
+            **flash
+        }
+    )
+
+
 @router.get("/settings/logs", response_class=HTMLResponse)
 async def logs_page(
     request: Request,

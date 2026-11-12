@@ -1,0 +1,101 @@
+<div style="display:flex;flex-direction:column;gap:1rem;">
+    {% if not reviews %}
+        <div style="padding:2.5rem 1.5rem;text-align:center;color:#94a3b8;background:#0b101b;border:1px dashed #1e293b;border-radius:10px;">
+            <p style="margin:0;font-size:13px;font-weight:600;color:#cbd5e1;">Belum ada ulasan Google Maps yang sesuai filter.</p>
+            <p style="margin:0.4rem 0 0;font-size:12px;">Klik tombol <strong>Sync 2 Minggu</strong> di kanan atas atau jalankan script backfill 1 tahun terakhir.</p>
+        </div>
+    {% else %}
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:140px;">Tanggal</th>
+                        <th style="width:170px;">Pengulas</th>
+                        <th style="width:120px;">Rating</th>
+                        <th>Ulasan</th>
+                        <th style="width:100px;">Sentimen</th>
+                        <th style="width:70px;text-align:right;">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reviews %}
+                    <tr>
+                        <td class="font-mono" style="font-size:11px;color:#94a3b8;white-space:nowrap;">
+                            <div>{{ r.published_date }}</div>
+                            {% if r.relative_date %}
+                                <div style="font-size:10px;color:#64748b;">{{ r.relative_date }}</div>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12px;font-weight:600;color:#f1f5f9;">
+                            {{ r.author_name }}
+                        </td>
+                        <td style="white-space:nowrap;">
+                            <span style="color:#facc15;font-size:13px;letter-spacing:1px;">
+                                {% for _ in range(r.rating or 0) %}★{% endfor %}{% for _ in range(5 - (r.rating or 0)) %}<span style="color:#334155;">★</span>{% endfor %}
+                            </span>
+                            <span class="font-mono" style="font-size:11px;color:#94a3b8;margin-left:0.25rem;">({{ r.rating }}/5)</span>
+                        </td>
+                        <td style="font-size:12px;color:#cbd5e1;line-height:1.5;max-width:480px;">
+                            <div>{{ r.snippet or "Tidak ada teks ulasan (hanya rating)." }}</div>
+                            {% if r.owner_reply %}
+                                <div style="margin-top:0.5rem;padding:0.45rem 0.65rem;background:rgba(59,130,246,0.08);border-left:2px solid #3b82f6;border-radius:4px;font-size:11px;color:#93c5fd;">
+                                    <strong>Balasan Pengelola:</strong> {{ r.owner_reply }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.sentiment == 'positive' %}
+                                <span class="delta-pill delta-positive">Positif</span>
+                            {% elif r.sentiment == 'neutral' %}
+                                <span class="delta-pill" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);">Netral</span>
+                            {% else %}
+                                <span class="delta-pill delta-negative">Negatif</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap;">
+                            {% if r.review_link %}
+                                <a href="{{ r.review_link }}" target="_blank" rel="noopener noreferrer" class="btn-ui btn-ui-secondary" style="font-size:11px;padding:0.25rem 0.5rem;">
+                                    Buka
+                                </a>
+                            {% else %}
+                                <span style="font-size:11px;color:#475569;">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;padding-top:0.75rem;border-top:1px solid #1e293b;font-size:12px;color:#94a3b8;">
+            <div>
+                Menampilkan halaman <strong style="color:#f1f5f9;">{{ page }}</strong> dari <strong style="color:#f1f5f9;">{{ total_pages }}</strong> (Total: <strong style="color:#f1f5f9;">{{ total_count }}</strong> ulasan)
+            </div>
+            {% if total_pages > 1 %}
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <button type="button"
+                        class="btn-ui btn-ui-secondary"
+                        style="font-size:11px;padding:0.3rem 0.7rem;"
+                        {% if page <= 1 %}disabled{% else %}
+                        hx-get="/partials/google-reviews/list?page={{ page - 1 }}"
+                        hx-target="#google-reviews-list-container"
+                        hx-include="#gr-rating-select, #gr-sentiment-select, #gr-search-input, #gr-sort-select, #gr-limit-select"
+                        {% endif %}>
+                    &larr; Sebelumnya
+                </button>
+                <button type="button"
+                        class="btn-ui btn-ui-secondary"
+                        style="font-size:11px;padding:0.3rem 0.7rem;"
+                        {% if page >= total_pages %}disabled{% else %}
+                        hx-get="/partials/google-reviews/list?page={{ page + 1 }}"
+                        hx-target="#google-reviews-list-container"
+                        hx-include="#gr-rating-select, #gr-sentiment-select, #gr-search-input, #gr-sort-select, #gr-limit-select"
+                        {% endif %}>
+                    Berikutnya &rarr;
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
